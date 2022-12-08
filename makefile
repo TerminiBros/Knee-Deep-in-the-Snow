@@ -1,10 +1,10 @@
 COMPILER = clang
 
-GAME_TITLE = \"9\ YEARS\"
+GAME_TITLE = \"9 YEARS\"
 GAME_BINARY = "9years"
 GAME_VERSION = \"1.0.0\"
 
-PROGRAM_INFO = -DMVERSION=$(GAME_VERSION) -DMTITLE=$(GAME_TITLE)
+PROGRAM_INFO = -DMVERSION=$(GAME_VERSION) -DMTITLE="$(GAME_TITLE)"
 
 BUILD_OPTIONS = -g3 -Wpedantic -Ivendor/include/ -D_DEBUG $(PROGRAM_INFO)
 RELEASE_OPTIONS = -O2 -Wpedantic -Ivendor/include/ -D_BUILD_MAC_APP $(PROGRAM_INFO)
@@ -34,8 +34,12 @@ WEB_ZIP = "$(GAME_TITLE)_v$(GAME_VERSION)_web.zip"
 
 BROWSER = firefox
 
+
+
 setup: 
 	mkdir bin
+
+
 
 build_mac:
 	$(COMPILER) $(BUILD_OPTIONS) $(CFILES) $(SOURCE_LIBS) $(MAC_OUT) $(MAC_OPT)
@@ -50,11 +54,19 @@ publish_mac:
 	butler push bin/$(MAC_ZIP) basil-termini/$(GAME_BINARY):mac --userversion $(GAME_VERSION)
 
 
+
 build_win:
 	$(COMPILER) $(BUILD_OPTIONS) $(CFILES) $(SOURCE_LIBS) $(WIN_OUT) $(WIN_OPT)
 
+release_win:
+	$(COMPILER) $(RELEASE_OPTIONS) $(CFILES) $(SOURCE_LIBS) $(WIN_OUT) $(WIN_OPT)
+
+
+
 build_lin:
 	$(COMPILER) $(BUILD_OPTIONS) $(CFILES) $(SOURCE_LIBS) $(LIN_OUT) $(LIN_OPT)
+
+
 
 
 build_web:
