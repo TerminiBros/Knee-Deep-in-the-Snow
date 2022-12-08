@@ -1,3 +1,3 @@
-# Template v2.2.2
+# 9 Years Jam
 
- My cross-platform Raylib project template
+A first person mode-7 aesthetic game
