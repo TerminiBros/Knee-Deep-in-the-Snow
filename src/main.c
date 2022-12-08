@@ -1,8 +1,11 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <stdio.h>
+#define MAIN_IMPL
 #include "main.h"
+#undef MAIN_IMPL
 #include "splash.h"
+
 
 int main(void) {
 #ifdef _BUILD_MAC_APP
@@ -29,7 +32,7 @@ int main(void) {
     return 0;
 }
 void Init(void) {
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT | FLAG_WINDOW_TOPMOST);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT | FLAG_WINDOW_TOPMOST | FLAG_MSAA_4X_HINT);
     InitWindow(content.width * initScale, content.height * initScale, TextFormat("%s v%s", TITLE, VERSION));
     SetWindowMinSize(content.width, content.height);
     ResizeWindowSnapped();
@@ -79,11 +82,15 @@ void Update(void) {
     state.UpdateFunc();
 }
 
+
+
+
 void Draw(void) {
     ClearBackground(BLACK);
 
     BeginTextureMode(rtxContent);
         DrawContent();
+        
     EndTextureMode();
 
 BeginBlendMode(BLEND_ALPHA_PREMULTIPLY);

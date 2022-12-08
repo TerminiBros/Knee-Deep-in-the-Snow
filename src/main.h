@@ -1,5 +1,6 @@
 #pragma once
 #include <raylib.h>
+#ifdef MAIN_IMPL
 #include <reasings.h>
 #define BATBOX_IMPL
 #include "batbox.h"
@@ -10,6 +11,7 @@
 #if defined(_DEBUG)
     #define TBDB_DEBUG_IMPL
     #include "tbdebug.h"
+#endif
 #endif
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -32,7 +34,7 @@ static int monitor = 0;
 static int targetRefresh = 60;
 
 static int initScale = 3;
-static Rectangle content = {200, 112, 400, 224};
+static Rectangle content = {128, 128, 256, 256};
 static float scaledWidth, scaledHeight;
 static float oldScreenWidth, oldScreenHeight;
 static Vector2 scaledOrigin, screenOrigin;
@@ -40,6 +42,7 @@ static Vector2 scaledOrigin, screenOrigin;
 //-----Assets-----//
 static RenderTexture2D rtxContent; // Pixel canvas
 static Texture2D texGrid;
+static Texture2D texTestPlane;
 static Shader shdWarp;
 static Sound sfxPause;
 static Font fntLilLabels;
@@ -63,7 +66,9 @@ enum Modes {
     MODE_PAUSED,
 };
 
+#ifdef MAIN_IMPL
 State state;
+#endif
 
 //-----Functions-----//
 
@@ -89,10 +94,14 @@ static void UpdatePaused(void);
 static void ScaleWindowToContent(void);
 static void DrawDebugInfo(void);
 
+#ifdef MAIN_IMPL
+#include <raymath.h>
+
 //-----Implementation-----//
 void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     rtxContent = LoadRenderTexture(content.width, content.height);
     texGrid = LoadTexture("assets/textures/grid.png");                              // Load a texture
+    texTestPlane = LoadTexture("assets/textures/snow.png");
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
     fntLilLabels = LoadFontEx("assets/fonts/lil_labels.ttf", 7, 0, 0);              // Load a font
@@ -107,11 +116,39 @@ void UpdateGame(void) {
     if (IsInputP(INPUT_START)) { PauseGame(); }
 }
 
+void RenderScene(void) {
+    Camera cam;
+    cam.projection = CAMERA_PERSPECTIVE;
+    cam.fovy = 90;
+
+    cam.up = (Vector3){0,1,0};
+    cam.position = (Vector3){0,1,0};
+
+
+    Quaternion Q = QuaternionMultiply(
+        QuaternionFromAxisAngle((Vector3){0,1,0}, 45 * DEG2RAD),
+        QuaternionFromAxisAngle((Vector3){1,0,0}, -state.totalTime * DEG2RAD)
+    );
+
+    cam.target = Vector3Add(
+        cam.position,
+        Vector3RotateByQuaternion((Vector3){0,0,1}, Q)
+    );
+
+    BeginMode3D(cam);
+
+    DrawCubeTexture(texTestPlane, (Vector3){0,0,0}, 256, 0.1, 256, WHITE);
+
+    EndMode3D();
+}
+
 void DrawGame(void) {
     ClearBackground(RAYWHITE);
 
     for (int j = 0; j < content.height / 16; j++) { for (int i = 0; i < content.width / 16; i++) DrawTexture(texGrid, i * 16, j * 16, Fade(LIGHTGRAY, 0.4)); }
     
+    RenderScene();
+
     DrawText(TextFormat("%s v%s", TITLE, VERSION), 3, 2, 10, DARKGRAY);
 
     static double fadeTimer = 0.4;
@@ -217,3 +254,6 @@ void ResizeWindowSnapped(void) {
     oldScreenWidth  = GetScreenWidth();
     oldScreenHeight = GetScreenHeight();
 }
+
+#endif
+
