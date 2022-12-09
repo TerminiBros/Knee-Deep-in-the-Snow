@@ -88,6 +88,8 @@ void Update(void) {
 void Draw(void) {
     ClearBackground(BLACK);
 
+    RenderLightingTexture();
+
     BeginTextureMode(rtxContent);
         DrawContent();
         

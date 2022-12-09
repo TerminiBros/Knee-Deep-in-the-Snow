@@ -41,9 +41,12 @@ static Vector2 scaledOrigin, screenOrigin;
 
 //-----Assets-----//
 static RenderTexture2D rtxContent; // Pixel canvas
+static RenderTexture2D rtxLightingTexture;
+static RenderTexture2D rtxCombinedTexture;
 static Texture2D texGrid;
 static Texture2D texTestPlane;
 static Texture2D texSky;
+static Texture2D texLight0;
 static Shader shdWarp;
 static Sound sfxPause;
 static Font fntLilLabels;
@@ -101,10 +104,15 @@ static void DrawDebugInfo(void);
 //-----Implementation-----//
 void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     rtxContent = LoadRenderTexture(content.width, content.height);
+    rtxLightingTexture = LoadRenderTexture(256*4, 256*4);
+    rtxCombinedTexture = LoadRenderTexture(256*4, 256*4);
+
     texGrid = LoadTexture("assets/textures/grid.png");                              // Load a texture
     texTestPlane = LoadTexture("assets/textures/snow.png");
     GenTextureMipmaps(&texTestPlane);
     texSky  = LoadTexture("assets/textures/skybox.png");
+    texLight0 = LoadTexture("assets/textures/light0.png");
+
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
     fntLilLabels = LoadFontEx("assets/fonts/lil_labels.ttf", 7, 0, 0);              // Load a font
@@ -185,13 +193,47 @@ void UpdateGame(void) {
 
 }
 
+
+Vector2 MapCoordToLightCoord(float x, float y) {
+    return (Vector2){(x+128) * 4, (y+128) * 4};
+}
+
+void RenderLightingTexture(void) {
+    BeginTextureMode(rtxLightingTexture); {
+
+        DrawRectangle(0,0,256*4,256*4, GetColor(0x01021aBC));
+
+        Vector2 pl = MapCoordToLightCoord(playerPos.x,playerPos.y);
+        float scale = 5;
+        float colorscale = scale * 1.2;
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0xAAAAAAAA));
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*colorscale,16*colorscale}), 0, colorscale, GetColor(0xAAAAAAAA) );
+        EndBlendMode();
+        
+    
+        EndTextureMode();
+    }
+
+    BeginTextureMode(rtxCombinedTexture); {
+
+        DrawTexture(texTestPlane, 0,0, WHITE);
+
+        BeginBlendMode(BLEND_MULTIPLIED);
+        DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256*4,256*4}, WHITE);
+        EndBlendMode();
+
+        EndTextureMode();
+    } 
+
+}
+
 void RenderScene(void) {
 
     DrawTexture(texSky, skyScroll, 0, WHITE);
     DrawTexture(texSky, skyScroll - 360, 0, WHITE);
     DrawTexture(texSky, skyScroll - 360 * 2, 0, WHITE);
 
-    ClearBackground(BLACK);
 
     Camera cam;
     cam.projection = CAMERA_PERSPECTIVE;
@@ -216,7 +258,9 @@ void RenderScene(void) {
 
     BeginMode3D(cam);
 
-    DrawCubeTexture(texTestPlane, (Vector3){0,0,0}, 256, 0.1, 256, WHITE);
+
+    
+    DrawCubeTexture(rtxCombinedTexture.texture, (Vector3){0,0,0}, 256, 0.1, 256, WHITE);
 
     for (size_t i = 0; i < 64; i++)
     {
@@ -237,6 +281,10 @@ void RenderMapOverlay(void) {
     float oy = 128;
 
 
+    //DrawTextureEx(rtxLightingTexture.texture, (Vector2){0,0}, 0, 0.25, WHITE);
+    DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256,256}, WHITE);
+
+
     DrawCircle(ox + playerPos.x,oy + playerPos.y, 2, GREEN);
     Vector2 lookLine = Vector2Add(Vector2Rotate((Vector2){0, 8}, (-rotationY) * DEG2RAD), playerPos);
     DrawLine( ox + playerPos.x, oy + playerPos.y, ox + lookLine.x, oy + lookLine.y, GREEN);
@@ -251,7 +299,9 @@ void RenderMapOverlay(void) {
         if (!sprites[i].enabled) continue;
         DrawCircle(ox + sprites[i].x, oy + sprites[i].y, 2, sprites[i].c);
     }
-    
+
+
+
 
 }
 
