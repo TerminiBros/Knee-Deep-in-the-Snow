@@ -157,7 +157,7 @@ void UpdateGame(void) {
     int horizontal = (( (input & INPUT_RIGHT) > 0) - ((input & INPUT_LEFT) > 0 ));
     int vertical   = (( (input & INPUT_DOWN) > 0) - ((input & INPUT_UP) > 0 ));
 
-    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime, vertical * state.deltaTime}, (90 + rotationY) * DEG2RAD),playerPos); 
+    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime, -vertical * state.deltaTime}, (-rotationY) * DEG2RAD),playerPos); 
     
 
 
