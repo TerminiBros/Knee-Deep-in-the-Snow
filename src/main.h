@@ -115,6 +115,16 @@ void UnloadAssets(void) {
 }
 
 
+typedef struct GameSprite {
+    bool enabled;
+    float x, y;
+    Color c;
+} GameSprite;
+
+GameSprite sprites[64] = {
+    (GameSprite){.x = 0, .y = 10, .c = RED, .enabled = true},
+};
+
 static Vector2 playerPos = {0,0};
 static float rotationY = 0;
 static float rotationX = 0;
@@ -122,6 +132,7 @@ static float skyScroll = 0;
 bool isMouseLocked = false;
 Vector2 mouseDelta = {0,0};
 Vector2 mouseSensitivity = {40.1,20.05};
+Vector2 moveSpeed = {10,10};
 
 void UpdateGame(void) {
     if (IsInputP(INPUT_START)) { PauseGame(); }
@@ -145,8 +156,8 @@ void UpdateGame(void) {
 
 
     rotationY -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
-    if (rotationY > 360) rotationY -= 360;
-    if (rotationY < 0) rotationY += 360;
+    //if (rotationY > 360) rotationY -= 360;
+    //if (rotationY < 0) rotationY += 360;
     rotationX += mouseDelta.y * mouseSensitivity.y * state.deltaTime;
     rotationX = Clamp(rotationX,-80,70);
 
@@ -157,9 +168,9 @@ void UpdateGame(void) {
     int horizontal = (( (input & INPUT_RIGHT) > 0) - ((input & INPUT_LEFT) > 0 ));
     int vertical   = (( (input & INPUT_DOWN) > 0) - ((input & INPUT_UP) > 0 ));
 
-    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime, -vertical * state.deltaTime}, (-rotationY) * DEG2RAD),playerPos); 
+    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime * moveSpeed.x, -vertical * state.deltaTime * moveSpeed.y}, (-rotationY) * DEG2RAD),playerPos); 
     
-
+    
 
 }
 
@@ -191,8 +202,67 @@ void RenderScene(void) {
 
     DrawCubeTexture(texTestPlane, (Vector3){0,0,0}, 256, 0.1, 256, WHITE);
 
+    for (size_t i = 0; i < 64; i++)
+    {
+        if (sprites[i].enabled == false) {continue;}
+        
+        
+        DrawBillboard(cam, texGrid, (Vector3){ sprites[i].x, 1, sprites[i].y }, 1.0, WHITE );
+        
+    }
+
     EndMode3D();
+
+    
+
 }
+
+void RenderMapOverlay(void) {
+    float ox = 128;
+    float oy = 128;
+
+
+    DrawCircle(ox + playerPos.x,oy + playerPos.y, 2, GREEN);
+    Vector2 lookLine = Vector2Add(Vector2Rotate((Vector2){0, 8}, (-rotationY) * DEG2RAD), playerPos);
+    DrawLine( ox + playerPos.x, oy + playerPos.y, ox + lookLine.x, oy + lookLine.y, GREEN);
+
+    Vector2 lookLine1 = Vector2Add(Vector2Rotate((Vector2){0, 13}, (-rotationY-45) * DEG2RAD), playerPos);
+    DrawLine( ox + playerPos.x, oy + playerPos.y, ox + lookLine1.x, oy + lookLine1.y, BLUE);
+    Vector2 lookLine2 = Vector2Add(Vector2Rotate((Vector2){0, 13}, (-rotationY+45) * DEG2RAD), playerPos);
+    DrawLine( ox + playerPos.x, oy + playerPos.y, ox + lookLine2.x, oy + lookLine2.y, BLUE);
+
+    for (size_t i = 0; i < 64; i++)
+    {
+        if (!sprites[i].enabled) continue;
+        DrawCircle(ox + sprites[i].x, oy + sprites[i].y, 2, sprites[i].c);
+        float scrn_X = 0;
+
+        //translate sprite position to relative to camera
+        double spriteX = sprites[i].x - playerPos.x;
+        double spriteY = sprites[i].y - playerPos.x;
+
+        //transform sprite with the inverse camera matrix
+        // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
+        // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
+        // [ planeY   dirY ]                                          [ -planeY  planeX ]
+        double planeX = 0; double planeY = 0.6;
+        Vector2 dir = Vector2Rotate((Vector2){0,1}, rotationY * DEG2RAD);
+        double dirY = dir.y; double dirX = dir.x;
+
+        double invDet = 1.0 / (planeX * dirY - dirX * planeY); //required for correct matrix multiplication
+
+        double transformX = invDet * (dirY * spriteX - dirX * spriteY);
+        double transformY = invDet * (-planeY * spriteX + planeX * spriteY); //this is actually the depth inside the screen, that what Z is in 3D
+
+        int spriteScreenX = ((256 / 2) * (1 + transformX / transformY));
+
+        DebugDrawInt(ox + sprites[i].x, oy + sprites[i].y, "SX", spriteScreenX);
+
+    }
+    
+
+}
+
 
 void DrawGame(void) {
     ClearBackground(RAYWHITE);
@@ -200,6 +270,7 @@ void DrawGame(void) {
     for (int j = 0; j < content.height / 16; j++) { for (int i = 0; i < content.width / 16; i++) DrawTexture(texGrid, i * 16, j * 16, Fade(LIGHTGRAY, 0.4)); }
     
     RenderScene();
+    RenderMapOverlay();
 
     DrawText(TextFormat("%s v%s", TITLE, VERSION), 3, 2, 10, DARKGRAY);
 
