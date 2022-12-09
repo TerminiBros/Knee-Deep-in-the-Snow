@@ -262,7 +262,9 @@ void DrawGame(void) {
     //for (int j = 0; j < content.height / 16; j++) { for (int i = 0; i < content.width / 16; i++) DrawTexture(texGrid, i * 16, j * 16, Fade(LIGHTGRAY, 0.4)); }
     
     RenderScene();
-    RenderMapOverlay();
+    if (IsKeyDown(KEY_TAB)) {
+        RenderMapOverlay();
+    }
 
     DrawText(TextFormat("%s v%s", TITLE, VERSION), 3, 2, 10, DARKGRAY);
 
