@@ -17,8 +17,8 @@ WORKSPACE = $(shell pwd)
 
 MAC_OPT = -Lvendor/lib/mac/ -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL vendor/lib/mac/libraylib.a
 MAC_OUT = -o "bin/build_mac"
-MAC_OUT_RELEASE = -o "bin/$(GAME_TITLE).app/Contents/MacOS/$(GAME_BINARY)"
-MAC_ZIP = "$(GAME_TITLE)_v$(GAME_VERSION)_mac.zip"
+MAC_OUT_RELEASE = -o "bin/9 YEARS.app/Contents/MacOS/9years"
+MAC_ZIP = "9_YEARS_v1.0.0_mac.zip"
 
 WIN_OPT = -O2 -Lvendor/lib/win/ ./vendor/lib/win/libraylib.a -lopengl32 -lgdi32 -lwinmm
 WIN_OUT = -o "bin/build_win"
@@ -46,9 +46,9 @@ build_mac:
 
 release_mac:
 	$(COMPILER) $(RELEASE_OPTIONS) $(CFILES) $(SOURCE_LIBS) $(MAC_OUT_RELEASE) $(MAC_OPT) && \
-    rsync -rupE assets bin/$(GAME_TITLE).app/Contents/MacOS/ && \
-	/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f bin/$(GAME_TITLE).app/ && \
-	cd bin && zip -r $(MAC_ZIP) $(GAME_TITLE).app
+    rsync -rupE assets "bin/9 YEARS.app/Contents/MacOS/" && \
+	/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f "bin/9 YEARS.app/" && \
+	cd bin && zip -r $(MAC_ZIP) "9 YEARS.app"
 
 publish_mac:
 	butler push bin/$(MAC_ZIP) basil-termini/$(GAME_BINARY):mac --userversion $(GAME_VERSION)

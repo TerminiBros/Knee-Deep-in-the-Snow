@@ -121,7 +121,7 @@ static float rotationX = 0;
 static float skyScroll = 0;
 bool isMouseLocked = false;
 Vector2 mouseDelta = {0,0};
-Vector2 mouseSensitivity = {0.1,0.05};
+Vector2 mouseSensitivity = {40.1,20.05};
 
 void UpdateGame(void) {
     if (IsInputP(INPUT_START)) { PauseGame(); }
@@ -133,30 +133,31 @@ void UpdateGame(void) {
         }
     } else {
         mouseDelta = GetMouseDelta();
-        SetMousePosition(content.x,content.y);
+        // SetMousePosition(content.x,content.y);
 
         if (IsKeyPressed(KEY_ESCAPE)) {
             isMouseLocked = false;
+            mouseDelta = (Vector2) {0,0};
             EnableCursor();
         }
     }
 
 
 
-    rotationY -= mouseDelta.x * mouseSensitivity.x;
+    rotationY -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
     if (rotationY > 360) rotationY -= 360;
     if (rotationY < 0) rotationY += 360;
-    rotationX += mouseDelta.y * mouseSensitivity.y;
+    rotationX += mouseDelta.y * mouseSensitivity.y * state.deltaTime;
     rotationX = Clamp(rotationX,-80,70);
 
-    skyScroll -= mouseDelta.x * mouseSensitivity.x;
+    skyScroll -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
     if (skyScroll > 512) skyScroll -= 512;
     if (skyScroll < 0) skyScroll += 512;
 
     int horizontal = (( (input & INPUT_RIGHT) > 0) - ((input & INPUT_LEFT) > 0 ));
     int vertical   = (( (input & INPUT_DOWN) > 0) - ((input & INPUT_UP) > 0 ));
 
-    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime, -vertical * state.deltaTime}, rotationY),playerPos); 
+    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime, vertical * state.deltaTime}, (90 + rotationY) * DEG2RAD),playerPos); 
     
 
 

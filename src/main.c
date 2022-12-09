@@ -16,12 +16,12 @@ int main(void) {
     showSplash = 0;
     SetTraceLogLevel(LOG_ALL);
 #else
-    SetExitKey(0);
 #endif
     Setup();
 #ifdef PLATFORM_WEB
     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
 #else
+    SetExitKey(0);
     while (!WindowShouldClose()) {
         if (IsWindowResized()) { ResizeWindowSnapped(); }
         UpdateDrawFrame();
