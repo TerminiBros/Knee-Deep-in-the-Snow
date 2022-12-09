@@ -132,6 +132,7 @@ GameSprite sprites[64] = {
 };
 
 static Vector2 playerPos = {0,0};
+static Vector2 playerVel = {0,0};
 static float rotationY = 0;
 static float rotationX = 0;
 static float skyScroll = 0;
@@ -173,8 +174,12 @@ void UpdateGame(void) {
 
     int horizontal = (( (input & INPUT_RIGHT) > 0) - ((input & INPUT_LEFT) > 0 ));
     int vertical   = (( (input & INPUT_DOWN) > 0) - ((input & INPUT_UP) > 0 ));
+    
+    Vector2 playerInput = Vector2Normalize((Vector2){-horizontal, -vertical});
 
-    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime * moveSpeed.x, -vertical * state.deltaTime * moveSpeed.y}, (-rotationY) * DEG2RAD),playerPos); 
+    playerVel =  Vector2Lerp( playerVel, (Vector2){playerInput.x * moveSpeed.x, playerInput.y * moveSpeed.y}, state.deltaTime * 15);
+
+    playerPos = Vector2Add(Vector2Rotate((Vector2){playerVel.x * state.deltaTime, playerVel.y * state.deltaTime }, (-rotationY) * DEG2RAD),playerPos); 
     
     
 
@@ -192,7 +197,10 @@ void RenderScene(void) {
     cam.fovy = 90;
 
     cam.up = (Vector3){0,1,0};
-    cam.position = (Vector3){playerPos.x,1,playerPos.y};
+
+    float bobbing = sin(state.totalTime * 12) * Vector2Length( (Vector2) {playerVel.x / moveSpeed.x, playerVel.y / moveSpeed.y} ) * 0.06;
+
+    cam.position = (Vector3){playerPos.x, 1 +  bobbing,playerPos.y};
 
 
     Quaternion Q = QuaternionMultiply(
