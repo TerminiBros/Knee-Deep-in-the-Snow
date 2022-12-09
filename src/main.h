@@ -175,7 +175,7 @@ typedef struct GameSprite {
     int health;
 } GameSprite;
 
-#define Prop_Tree (Rectangle){0,0,40,64}
+#define Prop_Tree (Rectangle){0,0,48,64}
 
 GameSprite sprites[NUM_SPRITES] = {
     //{.type = GST_Snowman, .x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1.2, .color = RED}},
