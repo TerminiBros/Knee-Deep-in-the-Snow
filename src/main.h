@@ -118,11 +118,15 @@ void UnloadAssets(void) {
 typedef struct GameSprite {
     bool enabled;
     float x, y;
+    float angle;
+    uint16_t animID;
+    bool isAnimated;
     Color c;
 } GameSprite;
 
 GameSprite sprites[64] = {
     (GameSprite){.x = 0, .y = 10, .c = RED, .enabled = true},
+    (GameSprite){.x = 50, .y = 32, .c = PURPLE, .enabled = true},
 };
 
 static Vector2 playerPos = {0,0};
@@ -176,9 +180,10 @@ void UpdateGame(void) {
 
 void RenderScene(void) {
 
-    DrawTexture(texSky, skyScroll, 64, WHITE);
-    DrawTexture(texSky, skyScroll-512, 64, WHITE);
+    // DrawTexture(texSky, skyScroll, 64, WHITE);
+    // DrawTexture(texSky, skyScroll-512, 64, WHITE);
 
+    ClearBackground(BLACK);
 
     Camera cam;
     cam.projection = CAMERA_PERSPECTIVE;
@@ -207,7 +212,7 @@ void RenderScene(void) {
         if (sprites[i].enabled == false) {continue;}
         
         
-        DrawBillboard(cam, texGrid, (Vector3){ sprites[i].x, 1, sprites[i].y }, 1.0, WHITE );
+        DrawBillboard(cam, texGrid, (Vector3){ sprites[i].x, 1, sprites[i].y }, 1.0, sprites[i].c);
         
     }
 
@@ -267,7 +272,7 @@ void RenderMapOverlay(void) {
 void DrawGame(void) {
     ClearBackground(RAYWHITE);
 
-    for (int j = 0; j < content.height / 16; j++) { for (int i = 0; i < content.width / 16; i++) DrawTexture(texGrid, i * 16, j * 16, Fade(LIGHTGRAY, 0.4)); }
+    //for (int j = 0; j < content.height / 16; j++) { for (int i = 0; i < content.width / 16; i++) DrawTexture(texGrid, i * 16, j * 16, Fade(LIGHTGRAY, 0.4)); }
     
     RenderScene();
     RenderMapOverlay();
