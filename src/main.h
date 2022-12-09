@@ -103,6 +103,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     rtxContent = LoadRenderTexture(content.width, content.height);
     texGrid = LoadTexture("assets/textures/grid.png");                              // Load a texture
     texTestPlane = LoadTexture("assets/textures/snow.png");
+    GenTextureMipmaps(&texTestPlane);
     texSky  = LoadTexture("assets/textures/skybox.png");
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
