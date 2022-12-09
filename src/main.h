@@ -46,16 +46,22 @@ static RenderTexture2D rtxContent; // Pixel canvas
 static RenderTexture2D rtxLightingTexture;
 static RenderTexture2D rtxCombinedTexture;
 static Texture2D texGrid;
+static Texture2D texTestImage;
 static Texture2D texPlane;
 static Texture2D texSnowman;
+static Texture2D texProps;
 static Texture2D texSnowmanFaces;
 static Texture2D texSky;
 static Texture2D texLight0;
 static Texture2D texWeapons;
 static Shader shdWarp;
+static Shader shdProp;
 static Sound sfxPause;
 static Font fntLilLabels;
 #define LIL_LABELS_FONT_SIZE (7)
+
+int LightmapUniformLoc;
+
 
 //-----Definitions-----//
 typedef struct State { // Global state, keeps track of time and mode
@@ -113,6 +119,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     rtxLightingTexture = LoadRenderTexture(256*4, 256*4);
     rtxCombinedTexture = LoadRenderTexture(256*4, 256*4);
 
+    texTestImage = LoadTexture("assets/textures/test.png");
     texGrid = LoadTexture("assets/textures/grid.png");                              // Load a texture
     texPlane = LoadTexture("assets/textures/snow.png");
     texSnowman = LoadTexture("assets/textures/snowman.png");
@@ -122,9 +129,15 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     texLight0 = LoadTexture("assets/textures/light0.png");
     SetTextureFilter(texLight0, TEXTURE_FILTER_BILINEAR);
 
+    SetTextureWrap(rtxLightingTexture.texture, TEXTURE_WRAP_CLAMP);
+
     texWeapons = LoadTexture("assets/textures/weapons.png");
+    texProps = LoadTexture("assets/textures/props.png");
 
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
+    shdProp = LoadShader("assets/shaders/prop.vs", "assets/shaders/prop.fs");
+    LightmapUniformLoc = GetShaderLocation(shdProp, "texLightmap");
+
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
     fntLilLabels = LoadFontEx("assets/fonts/lil_labels.ttf", 7, 0, 0);              // Load a font
     SetTextureFilter(GetFontDefault().texture, TEXTURE_FILTER_POINT);               // Ensure default font is pixelated
@@ -134,26 +147,41 @@ void UnloadAssets(void) {
     UnloadRenderTexture(rtxContent);
 }
 
+
+enum GSType {
+    GST_Prop,
+    GST_Snowman,
+};
+
 typedef struct Light {
   float radius;
   Color color;  
 } Light;
 
+
+
 typedef struct GameSprite {
     bool enabled;
+    int type;
     float x, y;
     float angle;
     uint16_t animID;
     bool isAnimated;
     Rectangle rect;
+    Vector2 scale;
     Color c;
     bool hasLight;
     Light light;
+    int health;
 } GameSprite;
 
+#define Prop_Tree (Rectangle){0,0,40,64}
+
 GameSprite sprites[NUM_SPRITES] = {
-    {.x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1.2, .color = RED}},
-    {.x = 50, .y = 32, .c = PURPLE, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1, .color = PINK}},
+    //{.type = GST_Snowman, .x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1.2, .color = RED}},
+    //{.type = GST_Snowman, .x = 50, .y = 32, .c = PURPLE, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1, .color = PINK}},
+    //{.type = GST_Prop, .x = -40, .y = -14, .c = WHITE, .enabled = true, .rect = Prop_Tree, .scale = {4,4}},
+    //{.type = GST_Prop, .x = -35, .y = -10, .c = WHITE, .enabled = true, .rect = Prop_Tree, .scale = {4,4}},
 };
 
 static Vector2 playerPos = {0,0};
@@ -166,7 +194,20 @@ Vector2 mouseDelta = {0,0};
 Vector2 mouseSensitivity = {40.1,20.05};
 Vector2 moveSpeed = {10,10};
 
+bool once = false;
+
 void UpdateGame(void) {
+    if (!once) {
+        int p = -128;
+        for (size_t i = 0; i < 64; i++)
+        {
+            sprites[i] = (GameSprite){.type = GST_Prop, .x = GetRandomValue(-128,128), .y = GetRandomValue(-128,128), .c = WHITE, .enabled = true, .hasLight = false, .rect = Prop_Tree, .scale = {4,4}};// .light = {.radius = 1, .color = BLUE}};
+            p += 4;
+        }
+        
+        once = true;
+    }
+
     if (IsInputP(INPUT_START)) { PauseGame(); }
 
     if (!isMouseLocked) {
@@ -206,8 +247,6 @@ void UpdateGame(void) {
 
     playerPos = Vector2Add(Vector2Rotate((Vector2){playerVel.x * state.deltaTime, playerVel.y * state.deltaTime }, (-rotationY) * DEG2RAD),playerPos); 
     
-    
-
 }
 
 
@@ -233,11 +272,11 @@ void DrawSnowman(Camera cam, int spriteIndex) {
 
     pos = Vector2MoveTowards(pos, playerPos, 0.1f);
     
-    DrawBillboardRec(cam, texSnowman, r2, (Vector3){ pos.x, 1.7 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
+    DrawBillboardRec(cam, texSnowman, r2, (Vector3){ pos.x, 1.6 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
 
     pos = Vector2MoveTowards(pos, playerPos, 0.1f);
     
-    DrawBillboardRec(cam, texSnowmanFaces, fr0, (Vector3){ pos.x, 1.7 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
+    DrawBillboardRec(cam, texSnowmanFaces, fr0, (Vector3){ pos.x, 1.6 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
 
 
 }
@@ -257,9 +296,9 @@ void RenderLightingTexture(void) {
 
         DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*20,16*20}), 0, 20, GetColor(0x22223222));
 
-        float scale = 2.3;
+        float scale = 4.3;
         float colorscale = scale * 1.2;
-        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0x999999AA));
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0x999999CC));
         
         for (size_t i = 0; i < NUM_SPRITES; i++)
         {
@@ -285,7 +324,7 @@ void RenderLightingTexture(void) {
         DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*colorscale,16*colorscale}), 0, colorscale, GetColor(0xAAAAAAAA) );
         EndBlendMode();
         
-        
+        //DrawTextureEx(texTestImage, (Vector2){0,0}, 0, 4, WHITE);
 
         EndTextureMode();
     }
@@ -300,6 +339,7 @@ void RenderLightingTexture(void) {
 
         EndTextureMode();
     } 
+
 
 }
 
@@ -334,17 +374,35 @@ void RenderScene(void) {
     BeginMode3D(cam);
 
 
-    
     DrawCubeTexture(rtxCombinedTexture.texture, (Vector3){0,0,0}, 256, 0.1, 256, WHITE);
+
+    SetShaderValueTexture(shdProp, LightmapUniformLoc, rtxLightingTexture.texture);
+    BeginShaderMode(shdProp);
 
     for (size_t i = 0; i < NUM_SPRITES; i++)
     {
         if (sprites[i].enabled == false) {continue;}
         
-        DrawSnowman(cam, i);
-        //DrawBillboardRec(cam, texGrid, sprites[i].rect, (Vector3){ sprites[i].x, 1, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
+        switch (sprites[i].type)
+        {
+
+        case GST_Prop: {
+            DrawBillboardRec(cam, texProps, sprites[i].rect, (Vector3){ sprites[i].x, sprites[i].scale.y / 2, sprites[i].y }, sprites[i].scale, sprites[i].c);
+            break;
+        }
+        
+        case GST_Snowman: {
+            DrawSnowman(cam, i);
+            break;
+        }
+            
+        default:
+            break;
+        }
         
     }
+
+    EndShaderMode();
 
     EndMode3D();
 
