@@ -216,9 +216,9 @@ void RenderLightingTexture(void) {
 
         DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*20,16*20}), 0, 20, GetColor(0x22223222));
 
-        float scale = 3;
+        float scale = 2.3;
         float colorscale = scale * 1.2;
-        //DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0xAAAAAAAA));
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0xAAAAAAAA));
         
         for (size_t i = 0; i < NUM_SPRITES; i++)
         {
@@ -241,7 +241,7 @@ void RenderLightingTexture(void) {
 
             DrawTextureEx(texLight0, Vector2Subtract((Vector2){p.x, p.y} , (Vector2){16*s,16*s}), 0, s, sprites[i].light.color);
         }
-        //DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*colorscale,16*colorscale}), 0, colorscale, GetColor(0xAAAAAAAA) );
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*colorscale,16*colorscale}), 0, colorscale, GetColor(0xAAAAAAAA) );
         EndBlendMode();
         
         
@@ -316,10 +316,11 @@ void RenderMapOverlay(void) {
 
 
     //DrawTextureEx(rtxLightingTexture.texture, (Vector2){0,0}, 0, 0.25, WHITE);
-    DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256,256}, WHITE);
+    if (IsKeyDown(KEY_LEFT_SHIFT)) {
+        DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256,256}, WHITE);
+    }
 
-
-    DrawCircle(ox + playerPos.x,oy + playerPos.y, 2, GREEN);
+    DrawPixel(ox + playerPos.x,oy + playerPos.y, GREEN);
     Vector2 lookLine = Vector2Add(Vector2Rotate((Vector2){0, 8}, (-rotationY) * DEG2RAD), playerPos);
     DrawLine( ox + playerPos.x, oy + playerPos.y, ox + lookLine.x, oy + lookLine.y, GREEN);
 
@@ -331,7 +332,7 @@ void RenderMapOverlay(void) {
     for (size_t i = 0; i < NUM_SPRITES; i++)
     {
         if (!sprites[i].enabled) continue;
-        DrawCircle(ox + sprites[i].x, oy + sprites[i].y, 2, sprites[i].c);
+        DrawPixel(ox + sprites[i].x, oy + sprites[i].y, sprites[i].c);
     }
 
 
