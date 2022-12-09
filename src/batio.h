@@ -80,10 +80,10 @@ void UpdateInput(void) {
     }
     if (IsKeyDown(KEY_X))     { input |= INPUT_A; }
     if (IsKeyDown(KEY_Z))     { input |= INPUT_B; }
-    if (IsKeyDown(KEY_W))    { input |= INPUT_UP; }
-    if (IsKeyDown(KEY_A))   { input |= INPUT_LEFT; }
-    if (IsKeyDown(KEY_S))  { input |= INPUT_DOWN; }
-    if (IsKeyDown(KEY_D)) { input |= INPUT_RIGHT; }
+    if (IsKeyDown(KEY_W))     { input |= INPUT_UP; }
+    if (IsKeyDown(KEY_A))     { input |= INPUT_LEFT; }
+    if (IsKeyDown(KEY_S))     { input |= INPUT_DOWN; }
+    if (IsKeyDown(KEY_D))     { input |= INPUT_RIGHT; }
     if (IsKeyDown(KEY_ENTER)) { input |= INPUT_START; }
     if (IsKeyDown(KEY_TAB))   { input |= INPUT_SELECT; }
 

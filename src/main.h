@@ -169,8 +169,8 @@ void UpdateGame(void) {
     rotationX = Clamp(rotationX,-80,70);
 
     skyScroll -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
-    if (skyScroll > 512) skyScroll -= 512;
-    if (skyScroll < 0) skyScroll += 512;
+    if (skyScroll > 360*2) skyScroll -= 360*2;
+    if (skyScroll < 0) skyScroll += 360*2;
 
     int horizontal = (( (input & INPUT_RIGHT) > 0) - ((input & INPUT_LEFT) > 0 ));
     int vertical   = (( (input & INPUT_DOWN) > 0) - ((input & INPUT_UP) > 0 ));
@@ -187,8 +187,9 @@ void UpdateGame(void) {
 
 void RenderScene(void) {
 
-    // DrawTexture(texSky, skyScroll, 64, WHITE);
-    // DrawTexture(texSky, skyScroll-512, 64, WHITE);
+    DrawTexture(texSky, skyScroll, 0, WHITE);
+    DrawTexture(texSky, skyScroll - 360, 0, WHITE);
+    DrawTexture(texSky, skyScroll - 360 * 2, 0, WHITE);
 
     ClearBackground(BLACK);
 
