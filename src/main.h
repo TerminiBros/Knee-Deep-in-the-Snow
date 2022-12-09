@@ -114,7 +114,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     GenTextureMipmaps(&texTestPlane);
     texSky  = LoadTexture("assets/textures/skybox.png");
     texLight0 = LoadTexture("assets/textures/light0.png");
-    SetTextureFilter(texLight0, TEXTURE_FILTER_TRILINEAR);
+    SetTextureFilter(texLight0, TEXTURE_FILTER_BILINEAR);
 
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
@@ -251,7 +251,7 @@ void RenderLightingTexture(void) {
 
     BeginTextureMode(rtxCombinedTexture); {
 
-        DrawTextureTiled(texTestPlane, (Rectangle) {0, 0, 512, 512}, (Rectangle) {0, 0, 1024, 1024}, (Vector2) {0, 0}, 0, 1, WHITE);
+        DrawTextureTiled(texTestPlane, (Rectangle) {0, 0, 1024, 1024}, (Rectangle) {0, 0, 1024, 1024}, (Vector2) {0, 0}, 0, 1, WHITE);
 
         BeginBlendMode(BLEND_MULTIPLIED);
         DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256*4,256*4}, WHITE);
