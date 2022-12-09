@@ -48,6 +48,7 @@ static RenderTexture2D rtxCombinedTexture;
 static Texture2D texGrid;
 static Texture2D texPlane;
 static Texture2D texSnowman;
+static Texture2D texSnowmanFaces;
 static Texture2D texSky;
 static Texture2D texLight0;
 static Texture2D texWeapons;
@@ -115,6 +116,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     texGrid = LoadTexture("assets/textures/grid.png");                              // Load a texture
     texPlane = LoadTexture("assets/textures/snow.png");
     texSnowman = LoadTexture("assets/textures/snowman.png");
+    texSnowmanFaces = LoadTexture("assets/textures/snowman_faces.png");
     GenTextureMipmaps(&texPlane);
     texSky  = LoadTexture("assets/textures/skybox.png");
     texLight0 = LoadTexture("assets/textures/light0.png");
@@ -216,6 +218,8 @@ void DrawSnowman(Camera cam, int spriteIndex) {
     Rectangle r1 = (Rectangle){48,0,64,48};
     Rectangle r2 = (Rectangle){0,0,48,48};
     
+    Rectangle fr0 = (Rectangle){0,0,48,48};
+
     float bob0 = 0.03 * sin(state.unpausedTime * 4);
     float bob1 = 0.02 * sin(state.unpausedTime * 3.8);
     float bob2 = 0.01 * sin(state.unpausedTime * 3.5);
@@ -230,6 +234,11 @@ void DrawSnowman(Camera cam, int spriteIndex) {
     pos = Vector2MoveTowards(pos, playerPos, 0.1f);
     
     DrawBillboardRec(cam, texSnowman, r2, (Vector3){ pos.x, 1.7 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
+
+    pos = Vector2MoveTowards(pos, playerPos, 0.1f);
+    
+    DrawBillboardRec(cam, texSnowmanFaces, fr0, (Vector3){ pos.x, 1.7 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
+
 
 }
 
