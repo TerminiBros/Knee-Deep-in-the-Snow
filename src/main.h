@@ -43,6 +43,7 @@ static Vector2 scaledOrigin, screenOrigin;
 static RenderTexture2D rtxContent; // Pixel canvas
 static Texture2D texGrid;
 static Texture2D texTestPlane;
+static Texture2D texSky;
 static Shader shdWarp;
 static Sound sfxPause;
 static Font fntLilLabels;
@@ -102,6 +103,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     rtxContent = LoadRenderTexture(content.width, content.height);
     texGrid = LoadTexture("assets/textures/grid.png");                              // Load a texture
     texTestPlane = LoadTexture("assets/textures/snow.png");
+    texSky  = LoadTexture("assets/textures/skybox.png");
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
     fntLilLabels = LoadFontEx("assets/fonts/lil_labels.ttf", 7, 0, 0);              // Load a font
@@ -112,11 +114,51 @@ void UnloadAssets(void) {
     UnloadRenderTexture(rtxContent);
 }
 
+static float rotationY = 0;
+static float rotationX = 0;
+static float skyScroll = 0;
+bool isMouseLocked = false;
+Vector2 mouseDelta = {0,0};
+Vector2 mouseSensitivity = {0.1,0.05};
+
 void UpdateGame(void) {
     if (IsInputP(INPUT_START)) { PauseGame(); }
+
+    if (!isMouseLocked) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            isMouseLocked = true;
+            HideCursor();
+        }
+    } else {
+        mouseDelta = GetMouseDelta();
+        SetMousePosition(content.x,content.y);
+
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            isMouseLocked = false;
+            ShowCursor();
+        }
+    }
+
+
+
+    rotationY -= mouseDelta.x * mouseSensitivity.x;
+    if (rotationY > 360) rotationY -= 360;
+    if (rotationY < 0) rotationY += 360;
+    rotationX += mouseDelta.y * mouseSensitivity.y;
+    rotationX = Clamp(rotationX,-80,70);
+
+    skyScroll -= mouseDelta.x * mouseSensitivity.x;
+    if (skyScroll > 512) skyScroll -= 512;
+    if (skyScroll < 0) skyScroll += 512;
+
 }
 
 void RenderScene(void) {
+
+    DrawTexture(texSky, skyScroll, 64, WHITE);
+    DrawTexture(texSky, skyScroll-512, 64, WHITE);
+
+
     Camera cam;
     cam.projection = CAMERA_PERSPECTIVE;
     cam.fovy = 90;
@@ -126,8 +168,8 @@ void RenderScene(void) {
 
 
     Quaternion Q = QuaternionMultiply(
-        QuaternionFromAxisAngle((Vector3){0,1,0}, 45 * DEG2RAD),
-        QuaternionFromAxisAngle((Vector3){1,0,0}, -state.totalTime * DEG2RAD)
+        QuaternionFromAxisAngle((Vector3){0,1,0}, rotationY * DEG2RAD),
+        QuaternionFromAxisAngle((Vector3){1,0,0}, rotationX * DEG2RAD)
     );
 
     cam.target = Vector3Add(
