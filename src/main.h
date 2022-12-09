@@ -112,6 +112,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     GenTextureMipmaps(&texTestPlane);
     texSky  = LoadTexture("assets/textures/skybox.png");
     texLight0 = LoadTexture("assets/textures/light0.png");
+    SetTextureFilter(texLight0, TEXTURE_FILTER_TRILINEAR);
 
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
@@ -201,17 +202,20 @@ Vector2 MapCoordToLightCoord(float x, float y) {
 void RenderLightingTexture(void) {
     BeginTextureMode(rtxLightingTexture); {
 
-        DrawRectangle(0,0,256*4,256*4, GetColor(0x01021aBC));
-
+        DrawRectangle(0,0,256*4,256*4, GetColor(0x01021aFF));
         Vector2 pl = MapCoordToLightCoord(playerPos.x,playerPos.y);
-        float scale = 5;
+
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*20,16*20}), 0, 20, GetColor(0x22223222));
+
+        float scale = 3;
         float colorscale = scale * 1.2;
         DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0xAAAAAAAA));
         BeginBlendMode(BLEND_ADDITIVE);
         DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*colorscale,16*colorscale}), 0, colorscale, GetColor(0xAAAAAAAA) );
         EndBlendMode();
         
-    
+        //DrawTexture( texFog, pl.x - texFog.width/2, pl.y - texFog.height/2, WHITE );
+
         EndTextureMode();
     }
 
