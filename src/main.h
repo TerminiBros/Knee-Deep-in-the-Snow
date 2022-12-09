@@ -46,7 +46,8 @@ static RenderTexture2D rtxContent; // Pixel canvas
 static RenderTexture2D rtxLightingTexture;
 static RenderTexture2D rtxCombinedTexture;
 static Texture2D texGrid;
-static Texture2D texTestPlane;
+static Texture2D texPlane;
+static Texture2D texSnowman;
 static Texture2D texSky;
 static Texture2D texLight0;
 static Shader shdWarp;
@@ -58,6 +59,7 @@ static Font fntLilLabels;
 typedef struct State { // Global state, keeps track of time and mode
     int mode;
     int prevMode;
+    double unpausedTime;
     double totalTime;
     double deltaTime;
     void (*UpdateFunc)(void);
@@ -110,8 +112,9 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     rtxCombinedTexture = LoadRenderTexture(256*4, 256*4);
 
     texGrid = LoadTexture("assets/textures/grid.png");                              // Load a texture
-    texTestPlane = LoadTexture("assets/textures/snow.png");
-    GenTextureMipmaps(&texTestPlane);
+    texPlane = LoadTexture("assets/textures/snow.png");
+    texSnowman = LoadTexture("assets/textures/snowman.png");
+    GenTextureMipmaps(&texPlane);
     texSky  = LoadTexture("assets/textures/skybox.png");
     texLight0 = LoadTexture("assets/textures/light0.png");
     SetTextureFilter(texLight0, TEXTURE_FILTER_BILINEAR);
@@ -144,7 +147,7 @@ typedef struct GameSprite {
 } GameSprite;
 
 GameSprite sprites[NUM_SPRITES] = {
-    {.x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1.2, .color = GREEN}},
+    {.x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1.2, .color = RED}},
     {.x = 50, .y = 32, .c = PURPLE, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1, .color = PINK}},
 };
 
@@ -203,6 +206,29 @@ void UpdateGame(void) {
 }
 
 
+void DrawSnowman(Camera cam, int spriteIndex) {
+    int i = spriteIndex;
+
+    Rectangle r0 = (Rectangle){0,48,64,48};
+    Rectangle r1 = (Rectangle){48,0,64,48};
+    Rectangle r2 = (Rectangle){0,0,48,48};
+    
+
+
+    DrawBillboardRec(cam, texSnowman, r0, (Vector3){ sprites[i].x, 0.5, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
+
+    Vector2 pos = Vector2MoveTowards((Vector2){sprites[i].x, sprites[i].y}, playerPos, 0.1f);
+
+    DrawBillboardRec(cam, texSnowman, r1, (Vector3){ pos.x, 1, pos.y }, (Vector2){1,1}, sprites[i].c);
+
+    pos = Vector2MoveTowards(pos, playerPos, 0.1f);
+    
+    DrawBillboardRec(cam, texSnowman, r2, (Vector3){ pos.x, 1.5, pos.y }, (Vector2){1,1}, sprites[i].c);
+
+}
+
+
+
 Vector2 MapCoordToLightCoord(float x, float y) {
     return (Vector2){(x+128) * 4, (y+128) * 4};
 }
@@ -251,7 +277,7 @@ void RenderLightingTexture(void) {
 
     BeginTextureMode(rtxCombinedTexture); {
 
-        DrawTextureTiled(texTestPlane, (Rectangle) {0, 0, 1024, 1024}, (Rectangle) {0, 0, 1024, 1024}, (Vector2) {0, 0}, 0, 1, WHITE);
+        DrawTextureTiled(texPlane, (Rectangle) {0, 0, 512, 512}, (Rectangle) {0, 0, 1024, 1024}, (Vector2) {0, 0}, 0, 1, WHITE);
 
         BeginBlendMode(BLEND_MULTIPLIED);
         DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256*4,256*4}, WHITE);
@@ -267,8 +293,6 @@ void RenderScene(void) {
     DrawTextureRec(texSky, (Rectangle) {0, 0, 360, 256},    (Vector2) {skyScroll, 0}, WHITE);
     DrawTextureRec(texSky, (Rectangle) {0, 0, 360, 256},    (Vector2) {skyScroll - 360, 0}, WHITE);
     DrawTextureRec(texSky, (Rectangle) {0, 256, 360, 256},  (Vector2) {skyScroll - 360 * 2, 0}, WHITE);
-    // DrawTexture(texSky, skyScroll - 360, 0, WHITE);
-    // DrawTexture(texSky, skyScroll - 360 * 2, 0, WHITE);
 
 
     Camera cam;
@@ -277,7 +301,7 @@ void RenderScene(void) {
 
     cam.up = (Vector3){0,1,0};
 
-    float bobbing = sin(state.totalTime * 12) * Vector2Length( (Vector2) {playerVel.x / moveSpeed.x, playerVel.y / moveSpeed.y} ) * 0.06;
+    float bobbing = sin(state.unpausedTime * 12) * Vector2Length( (Vector2) {playerVel.x / moveSpeed.x, playerVel.y / moveSpeed.y} ) * 0.06;
 
     cam.position = (Vector3){playerPos.x, 1 +  bobbing,playerPos.y};
 
@@ -302,7 +326,8 @@ void RenderScene(void) {
     {
         if (sprites[i].enabled == false) {continue;}
         
-        DrawBillboardRec(cam, texGrid, sprites[i].rect, (Vector3){ sprites[i].x, 1, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
+        DrawSnowman(cam, i);
+        //DrawBillboardRec(cam, texGrid, sprites[i].rect, (Vector3){ sprites[i].x, 1, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
         
     }
 
@@ -336,8 +361,6 @@ void RenderMapOverlay(void) {
         if (!sprites[i].enabled) continue;
         DrawPixel(ox + sprites[i].x, oy + sprites[i].y, sprites[i].c);
     }
-
-
 
 
 }

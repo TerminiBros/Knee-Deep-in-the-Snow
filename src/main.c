@@ -63,6 +63,7 @@ void Update(void) {
         state.DrawFunc = &DrawSplash;
         break;
     case MODE_GAME:
+        state.unpausedTime += state.deltaTime;
         state.UpdateFunc = &UpdateGame;
         state.DrawFunc = &DrawGame;
         break;
