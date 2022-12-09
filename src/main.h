@@ -251,7 +251,7 @@ void RenderLightingTexture(void) {
 
     BeginTextureMode(rtxCombinedTexture); {
 
-        DrawTextureTiled(texTestPlane, (Rectangle) {0, 0, 256, 256}, (Rectangle) {0, 0, 1024, 1024}, (Vector2) {0, 0}, 0, 1, WHITE);
+        DrawTextureTiled(texTestPlane, (Rectangle) {0, 0, 512, 512}, (Rectangle) {0, 0, 1024, 1024}, (Vector2) {0, 0}, 0, 1, WHITE);
 
         BeginBlendMode(BLEND_MULTIPLIED);
         DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256*4,256*4}, WHITE);
