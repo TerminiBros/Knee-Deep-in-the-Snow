@@ -122,12 +122,13 @@ typedef struct GameSprite {
     float angle;
     uint16_t animID;
     bool isAnimated;
+    Rectangle rect;
     Color c;
 } GameSprite;
 
 GameSprite sprites[64] = {
-    (GameSprite){.x = 0, .y = 10, .c = RED, .enabled = true},
-    (GameSprite){.x = 50, .y = 32, .c = PURPLE, .enabled = true},
+    (GameSprite){.x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}},
+    (GameSprite){.x = 50, .y = 32, .c = PURPLE, .enabled = true, .rect = {0,0,16,16}},
 };
 
 static Vector2 playerPos = {0,0};
@@ -161,8 +162,8 @@ void UpdateGame(void) {
 
 
     rotationY -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
-    //if (rotationY > 360) rotationY -= 360;
-    //if (rotationY < 0) rotationY += 360;
+    if (rotationY > 360) rotationY -= 360;
+    if (rotationY < 0) rotationY += 360;
     rotationX += mouseDelta.y * mouseSensitivity.y * state.deltaTime;
     rotationX = Clamp(rotationX,-80,70);
 
@@ -212,8 +213,7 @@ void RenderScene(void) {
     {
         if (sprites[i].enabled == false) {continue;}
         
-        
-        DrawBillboard(cam, texGrid, (Vector3){ sprites[i].x, 1, sprites[i].y }, 1.0, sprites[i].c);
+        DrawBillboardRec(cam, texGrid, sprites[i].rect, (Vector3){ sprites[i].x, 1, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
         
     }
 
@@ -241,29 +241,6 @@ void RenderMapOverlay(void) {
     {
         if (!sprites[i].enabled) continue;
         DrawCircle(ox + sprites[i].x, oy + sprites[i].y, 2, sprites[i].c);
-        float scrn_X = 0;
-
-        //translate sprite position to relative to camera
-        double spriteX = sprites[i].x - playerPos.x;
-        double spriteY = sprites[i].y - playerPos.x;
-
-        //transform sprite with the inverse camera matrix
-        // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
-        // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
-        // [ planeY   dirY ]                                          [ -planeY  planeX ]
-        double planeX = 0; double planeY = 0.6;
-        Vector2 dir = Vector2Rotate((Vector2){0,1}, rotationY * DEG2RAD);
-        double dirY = dir.y; double dirX = dir.x;
-
-        double invDet = 1.0 / (planeX * dirY - dirX * planeY); //required for correct matrix multiplication
-
-        double transformX = invDet * (dirY * spriteX - dirX * spriteY);
-        double transformY = invDet * (-planeY * spriteX + planeX * spriteY); //this is actually the depth inside the screen, that what Z is in 3D
-
-        int spriteScreenX = ((256 / 2) * (1 + transformX / transformY));
-
-        DebugDrawInt(ox + sprites[i].x, oy + sprites[i].y, "SX", spriteScreenX);
-
     }
     
 
