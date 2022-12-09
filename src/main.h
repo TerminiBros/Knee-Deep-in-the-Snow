@@ -251,7 +251,7 @@ void RenderLightingTexture(void) {
 
     BeginTextureMode(rtxCombinedTexture); {
 
-        DrawTexture(texTestPlane, 0,0, WHITE);
+        DrawTextureTiled(texTestPlane, (Rectangle) {0, 0, 256, 256}, (Rectangle) {0, 0, 1024, 1024}, (Vector2) {0, 0}, 0, 1, WHITE);
 
         BeginBlendMode(BLEND_MULTIPLIED);
         DrawTextureQuad(rtxLightingTexture.texture, (Vector2){1,-1}, (Vector2){0,0}, (Rectangle){0,0,256*4,256*4}, WHITE);
@@ -264,9 +264,11 @@ void RenderLightingTexture(void) {
 
 void RenderScene(void) {
 
-    DrawTexture(texSky, skyScroll, 0, WHITE);
-    DrawTexture(texSky, skyScroll - 360, 0, WHITE);
-    DrawTexture(texSky, skyScroll - 360 * 2, 0, WHITE);
+    DrawTextureRec(texSky, (Rectangle) {0, 0, 360, 256},    (Vector2) {skyScroll, 0}, WHITE);
+    DrawTextureRec(texSky, (Rectangle) {0, 0, 360, 256},    (Vector2) {skyScroll - 360, 0}, WHITE);
+    DrawTextureRec(texSky, (Rectangle) {0, 256, 360, 256},  (Vector2) {skyScroll - 360 * 2, 0}, WHITE);
+    // DrawTexture(texSky, skyScroll - 360, 0, WHITE);
+    // DrawTexture(texSky, skyScroll - 360 * 2, 0, WHITE);
 
 
     Camera cam;
