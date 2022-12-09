@@ -50,6 +50,7 @@ static Texture2D texPlane;
 static Texture2D texSnowman;
 static Texture2D texSky;
 static Texture2D texLight0;
+static Texture2D texWeapons;
 static Shader shdWarp;
 static Sound sfxPause;
 static Font fntLilLabels;
@@ -118,6 +119,8 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     texSky  = LoadTexture("assets/textures/skybox.png");
     texLight0 = LoadTexture("assets/textures/light0.png");
     SetTextureFilter(texLight0, TEXTURE_FILTER_BILINEAR);
+
+    texWeapons = LoadTexture("assets/textures/weapons.png");
 
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
@@ -213,17 +216,20 @@ void DrawSnowman(Camera cam, int spriteIndex) {
     Rectangle r1 = (Rectangle){48,0,64,48};
     Rectangle r2 = (Rectangle){0,0,48,48};
     
+    float bob0 = 0.03 * sin(state.unpausedTime * 4);
+    float bob1 = 0.02 * sin(state.unpausedTime * 3.8);
+    float bob2 = 0.01 * sin(state.unpausedTime * 3.5);
 
 
-    DrawBillboardRec(cam, texSnowman, r0, (Vector3){ sprites[i].x, 0.5, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
+    DrawBillboardRec(cam, texSnowman, r0, (Vector3){ sprites[i].x, 0.5 + bob0, sprites[i].y }, (Vector2){1,1}, WHITE);
 
     Vector2 pos = Vector2MoveTowards((Vector2){sprites[i].x, sprites[i].y}, playerPos, 0.1f);
 
-    DrawBillboardRec(cam, texSnowman, r1, (Vector3){ pos.x, 1, pos.y }, (Vector2){1,1}, sprites[i].c);
+    DrawBillboardRec(cam, texSnowman, r1, (Vector3){ pos.x, 1.1 + bob0 + bob1, pos.y }, (Vector2){1,1}, WHITE);
 
     pos = Vector2MoveTowards(pos, playerPos, 0.1f);
     
-    DrawBillboardRec(cam, texSnowman, r2, (Vector3){ pos.x, 1.5, pos.y }, (Vector2){1,1}, sprites[i].c);
+    DrawBillboardRec(cam, texSnowman, r2, (Vector3){ pos.x, 1.7 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
 
 }
 
@@ -244,7 +250,7 @@ void RenderLightingTexture(void) {
 
         float scale = 2.3;
         float colorscale = scale * 1.2;
-        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0xAAAAAAAA));
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0x999999AA));
         
         for (size_t i = 0; i < NUM_SPRITES; i++)
         {
@@ -253,7 +259,7 @@ void RenderLightingTexture(void) {
             Vector2 p = MapCoordToLightCoord(sprites[i].x, sprites[i].y);
             float s   = sprites[i].light.radius;
 
-            DrawTextureEx(texLight0, Vector2Subtract((Vector2){p.x, p.y} , (Vector2){16*s,16*s}), 0, s, GetColor(0xAAAAAAAA));
+            DrawTextureEx(texLight0, Vector2Subtract((Vector2){p.x, p.y} , (Vector2){16*s,16*s}), 0, s, GetColor(0xAAAAAA77));
         }
         
 
@@ -372,6 +378,9 @@ void DrawGame(void) {
     //for (int j = 0; j < content.height / 16; j++) { for (int i = 0; i < content.width / 16; i++) DrawTexture(texGrid, i * 16, j * 16, Fade(LIGHTGRAY, 0.4)); }
     
     RenderScene();
+
+    DrawTexture(texWeapons, 128 - texWeapons.width/2, 256 - texWeapons.height, WHITE);
+
     if (IsKeyDown(KEY_TAB)) {
         RenderMapOverlay();
     }
