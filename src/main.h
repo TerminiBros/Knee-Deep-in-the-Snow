@@ -114,6 +114,8 @@ void UnloadAssets(void) {
     UnloadRenderTexture(rtxContent);
 }
 
+
+static Vector2 playerPos = {0,0};
 static float rotationY = 0;
 static float rotationX = 0;
 static float skyScroll = 0;
@@ -127,7 +129,7 @@ void UpdateGame(void) {
     if (!isMouseLocked) {
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             isMouseLocked = true;
-            HideCursor();
+            DisableCursor();
         }
     } else {
         mouseDelta = GetMouseDelta();
@@ -135,7 +137,7 @@ void UpdateGame(void) {
 
         if (IsKeyPressed(KEY_ESCAPE)) {
             isMouseLocked = false;
-            ShowCursor();
+            EnableCursor();
         }
     }
 
@@ -151,6 +153,13 @@ void UpdateGame(void) {
     if (skyScroll > 512) skyScroll -= 512;
     if (skyScroll < 0) skyScroll += 512;
 
+    int horizontal = (( (input & INPUT_RIGHT) > 0) - ((input & INPUT_LEFT) > 0 ));
+    int vertical   = (( (input & INPUT_DOWN) > 0) - ((input & INPUT_UP) > 0 ));
+
+    playerPos = Vector2Add(Vector2Rotate((Vector2){-horizontal * state.deltaTime, -vertical * state.deltaTime}, rotationY),playerPos); 
+    
+
+
 }
 
 void RenderScene(void) {
@@ -164,7 +173,7 @@ void RenderScene(void) {
     cam.fovy = 90;
 
     cam.up = (Vector3){0,1,0};
-    cam.position = (Vector3){0,1,0};
+    cam.position = (Vector3){playerPos.x,1,playerPos.y};
 
 
     Quaternion Q = QuaternionMultiply(
