@@ -33,12 +33,12 @@ int main(void) {
 }
 void Init(void) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT | FLAG_WINDOW_TOPMOST | FLAG_MSAA_4X_HINT);
-    InitWindow(content.width * initScale, content.height * initScale, TextFormat("%s v%s", TITLE, VERSION));
+    InitWindow(content.width * initScale, content.height * initScale, TextFormat("Knee Deep in the Snow v%s", VERSION));
     SetWindowMinSize(content.width, content.height);
     ResizeWindowSnapped();
     InitAudioDevice();
     LoadAssets();
-    InitSplash(content.width, content.height, RAYWHITE, BLACK, false, MODE_GAME, &state.mode, &state.deltaTime);
+    InitSplash(content.width, content.height, GetColor(0x8370d0ff), bgColor, false, MODE_GAME, &state.mode, &state.deltaTime);
 }
 
 void Setup(void) {
@@ -88,7 +88,7 @@ void Update(void) {
 
 
 void Draw(void) {
-    ClearBackground(BLACK);
+    ClearBackground(bgColor);
 
     RenderLightingTexture();
 
