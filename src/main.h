@@ -175,6 +175,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
 
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
     fntLilLabels = LoadFontEx("assets/fonts/lil_labels.ttf", 7, 0, 0);              // Load a font
+    fntReadswell = LoadFontEx("assets/fonts/readswell.ttf", 13, 0, 0);              // Load a font
     SetTextureFilter(GetFontDefault().texture, TEXTURE_FILTER_POINT);               // Ensure default font is pixelated
 }
 
