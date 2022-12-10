@@ -280,6 +280,7 @@ typedef struct Weapon {
     int frames;
     float frameSpeed;
     int bulletType;
+    float bulletSpeed;
     float cooldownMax;
     float animTimerMax;
     Rectangle spriteRect;
@@ -305,6 +306,7 @@ static int selectedWeapon = 0;
 static Weapon weapons[NUM_WEAPONS] = {
     {   // CandyCane
         .bulletType = BTP_Melee,
+        .bulletSpeed = 0,
         .ammo = -255,
         .ammoCap = -255,
         .frames = 0,
@@ -320,6 +322,7 @@ static Weapon weapons[NUM_WEAPONS] = {
     },
     {   // BulbLauncher
         .bulletType = BTP_Bulb,
+        .bulletSpeed = 22,
         .ammoCap = 6,
         .frames = 3,
         .frameSpeed = 3,
@@ -442,7 +445,7 @@ void UpdateGame(void) {
                     ai->state = AIS_Hunt;
                 }
 
-                if (!ai->stateCooldownEnabled) {
+                if (ai->stateCooldownEnabled == false) {
                     ai->stateCooldown = GetRandomValue(30,50);
                     ai->stateCooldownEnabled = true;
                     ai->nextstate = AIS_Hunt;
@@ -517,6 +520,30 @@ void UpdateGame(void) {
             sprites[i].x += sprites[i].ai.velocity.x * state.deltaTime;
             sprites[i].y += sprites[i].ai.velocity.y * state.deltaTime;
             sprites[i].hover -= state.deltaTime;
+
+            bool markForDeath = false;
+
+            for (size_t ei = 0; ei < NUM_SPRITES; ei++)
+            {
+                if (sprites[ei].enabled && sprites[ei].type == GST_Snowman) {
+                    if (CheckCollisionCircles(
+                        (Vector2){sprites[i].x, sprites[i].y}, sprites[i].size,
+                        (Vector2){sprites[ei].x, sprites[ei].y}, sprites[ei].size
+                    )) {
+                        sprites[ei] = (GameSprite){0};
+                        markForDeath = true;
+                    }
+                }
+            }
+            
+            if (sprites[i].hover <= 0) {
+                markForDeath = true;
+            }
+
+            if (markForDeath) {
+                // TODO: Do extra fancy stuff per bullet type here!
+                sprites[i] = (GameSprite){0};
+            }
         }
 
     }
@@ -545,7 +572,7 @@ void UpdateGame(void) {
                 Vector2 vdir = Vector2Rotate((Vector2){0,1}, DEG2RAD * -rotationY);
                 Vector2 forward = Vector2Add( playerPos, vdir );
 
-                SpawnPlayerBullet(FindFreeID(), forward.x, forward.y, 1.0, weapons[selectedWeapon].nextColor, Vector2Scale(vdir,15), weapons[selectedWeapon].bulletType);
+                SpawnPlayerBullet(FindFreeID(), forward.x, forward.y, 1.0, weapons[selectedWeapon].nextColor, Vector2Scale(vdir,weapons[selectedWeapon].bulletSpeed), weapons[selectedWeapon].bulletType);
                 if (selectedWeapon == 1) {
                     weapons[selectedWeapon].nextColor = BulbColorPool[GetRandomValue(0,5)];
                 }
@@ -621,6 +648,10 @@ void SpawnPlayerBullet(int id, float x, float y, float h, Color c, Vector2 vel, 
             .ai.velocity = vel,
             .bulletType = type,
         };
+        if (type == BTP_Bulb) {
+            sprites[id].hasLight = true;
+            sprites[id].light = (Light){.radius = .4, .color = c};
+        }
     }
 }
 
@@ -663,11 +694,11 @@ void SpawnSnowman(int id, float x, float y) {
                 .wanderSpeed = 5,
                 .runSpeed = 6.8,
                 .huntSpeed = 5.5,
-                .desiredDistance = 5 + ((float)GetRandomValue(-5,7) / 1.0), 
+                .desiredDistance = 5 + ((float)GetRandomValue(-5,2) / 1.0), 
                 .escapeDistance = 33, 
                 .engageDistance = 9, 
                 .attackType = AIA_snowball,
-                .strafeSpeed = ((float)GetRandomValue(10, 40) / 10.0) * GetRandomValue(0,1) == 0 ? -1 : 1, 
+                .strafeSpeed = ((float)GetRandomValue(10, 40) / 20.0) * GetRandomValue(0,1) == 0 ? -1 : 1, 
             },
         };
         
