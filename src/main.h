@@ -206,8 +206,8 @@ enum AI_Attack {
 enum AI_State {
     AIS_Wander,
     AIS_Hunt,
+    AIS_Attack,
     AIS_Run,
-    AIS_Goto,
 };
 
 typedef struct Light {
@@ -223,7 +223,7 @@ typedef struct AI {
     int state;
     int nextstate;
     Vector2 velocity;
-
+    bool stateCooldownEnabled;
 //-
     float desiredDistance;
     float escapeDistance;
@@ -275,6 +275,7 @@ typedef struct Weapon {
     float frameSpeed;
     int bulletType;
     float cooldownMax;
+    float animTimerMax;
     Rectangle spriteRect;
     Vector2 pivot;
     Vector2 offset;
@@ -302,6 +303,7 @@ static Weapon weapons[NUM_WEAPONS] = {
         .frames = 0,
         .frameSpeed = 0,
         .cooldownMax = 0.5,
+        .animTimerMax = 0.4,
         .specialAnimation = true,
         .holdDown = false,
         .offset = {64,100+40},
@@ -314,6 +316,7 @@ static Weapon weapons[NUM_WEAPONS] = {
         .frames = 3,
         .frameSpeed = 3,
         .cooldownMax = 0.8,
+        .animTimerMax = 0.7,
         .specialAnimation = false,
         .holdDown = false,
         .offset = {0,0},
@@ -366,7 +369,8 @@ void UpdateGame(void) {
         };
 
         SpawnSnowman(300, 0, 10);
-        sprites[300].hasAI = false;
+        sprites[300].hasAI = true;
+        sprites[300].ai.state = AIS_Run;
         sprites[300].angle = 90;
         sprites[300].hasLight = true;
         sprites[300].light = (Light){.color = PURPLE, .radius = 2};
@@ -397,10 +401,21 @@ void UpdateGame(void) {
     {
         if (sprites[i].enabled == false) {continue;}
 
+        if (sprites[i].health > -255 && sprites[i].health < 0) {
+            sprites[i].enabled = false;
+        }
+
         if (sprites[i].hasAI == true) {
 
             AI* ai = &sprites[i].ai;
             if (ai->friendly) {ai->state = AIS_Wander;}
+
+            if (ai->stateCooldownEnabled && ai->stateCooldown <= 0) {
+                ai->state = ai->nextstate;
+                ai->stateCooldownEnabled = false;
+            } else {
+                ai->stateCooldown -= state.deltaTime;
+            }
 
             switch (sprites[i].ai.state)
             {
@@ -414,25 +429,51 @@ void UpdateGame(void) {
                 }
                 ai->extraCooldown -= state.deltaTime;
 
+                if (Vector2Distance((Vector2){sprites[i].x,sprites[i].y}, playerPos) < ai->engageDistance) {
+                    ai->state = AIS_Hunt;
+                }
+
                 break;
             }
 
             case AIS_Run: {
+                Vector2 diff = Vector2Subtract((Vector2){sprites[i].x,sprites[i].y}, playerPos);
+                ai->velocity = Vector2Scale( Vector2Normalize(diff), ai->runSpeed );
+                sprites[i].angle = RAD2DEG * (180 + atan2f(ai->velocity.x, ai->velocity.y));
 
+                if (Vector2Distance((Vector2){sprites[i].x,sprites[i].y}, playerPos) > ai->escapeDistance) {
+                    ai->state = AIS_Wander;
+                }
+
+                if (!ai->stateCooldownEnabled) {ai->stateCooldown = 8.0; ai->nextstate = AIS_Attack; ai->stateCooldownEnabled = true;}
                 break;
             }
 
             case AIS_Hunt: {
+                Vector2 diff = Vector2Subtract(playerPos, (Vector2){sprites[i].x,sprites[i].y});
+                Vector2 normdiff = Vector2Normalize(diff);
+                sprites[i].angle = RAD2DEG * (-atan2f(normdiff.y, normdiff.x)) + 180 + 90;
+
+                ai->velocity = Vector2Scale( Vector2Normalize(diff), ai->huntSpeed );
+                sprites[i].angle = (RAD2DEG * (atan2f(ai->velocity.x, ai->velocity.y)));
+                
+                if (Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) < ai->desiredDistance) {
+                    ai->state = AIS_Attack;
+                }
 
                 break;
             }
 
-            case AIS_Goto: {
-                if (ai->stateCooldown <= 0) {
-                    ai->state = ai->nextstate;
+            case AIS_Attack: {
+                Vector2 diff = Vector2Subtract(playerPos, (Vector2){sprites[i].x,sprites[i].y});
+                Vector2 normdiff = Vector2Normalize(diff);
+                if (Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) > ai->desiredDistance + 2) {
+                    ai->velocity = Vector2Scale( Vector2Normalize(diff), ai->huntSpeed + 1);
                 } else {
-                    ai->stateCooldown -= state.deltaTime;
+                    ai->velocity = Vector2Lerp(ai->velocity, Vector2Zero(), state.deltaTime * 10);
                 }
+                sprites[i].angle = RAD2DEG * (-atan2f(normdiff.y, normdiff.x)) + 180 + 90;
+                
                 break;
             }
 
@@ -466,12 +507,13 @@ void UpdateGame(void) {
             selectedWeapon = 1;
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-
-            if ( weapons[selectedWeapon].cooldown <= 0 ) {
+        if ( weapons[selectedWeapon].cooldown <= 0) {
+            if ((weapons[selectedWeapon].holdDown == false && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+            ||  (weapons[selectedWeapon].holdDown == true  && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+            ) {
                 weapons[selectedWeapon].cooldown = weapons[selectedWeapon].cooldownMax;
+                weapons[selectedWeapon].animTimer = weapons[selectedWeapon].animTimerMax;
             }
-
         }
 
     }
@@ -479,6 +521,8 @@ void UpdateGame(void) {
     for (size_t i = 0; i < NUM_WEAPONS; i++)
     {
         weapons[i].cooldown -= state.deltaTime;
+        weapons[i].animTimer -= state.deltaTime;
+        weapons[i].animTimer = Clamp(weapons[i].animTimer, 0, weapons[i].animTimerMax);
     }
     
 
@@ -537,6 +581,7 @@ void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 
             .c = WHITE, 
             .rect = prop, 
             .scale = scale,
+            .health = -255,
             .baseIsEmissive = emissive,
             .emissiveFrames = emissive ? 1 : 0,
             .emissiveFrameSpeed = emissive ? 1 : 0,
@@ -556,15 +601,16 @@ void SpawnSnowman(int id, float x, float y) {
             .c = RED,
             .size = 1,
             .hasLight = true,
+            .health = 20,
             // /.light = {.radius = 0.4, .color = LIGHTGRAY},
             .hasAI = true,
             .ai = {
                 .friendly =false,
                 .wanderSpeed = 5,
                 .runSpeed = 6.8,
-                .huntSpeed = 6.5,
-                .desiredDistance = 4, 
-                .escapeDistance = 20, 
+                .huntSpeed = 5.5,
+                .desiredDistance = 5, 
+                .escapeDistance = 33, 
                 .engageDistance = 9, 
                 .attackType = AIA_snowball
             },
@@ -845,12 +891,14 @@ void DrawWeapons(void) {
         DrawTexture(texLight0, 20, 20, RED);
     }
 
+    float recoil = Lerp(0, 10, weapons[selectedWeapon].animTimer / weapons[selectedWeapon].animTimerMax);
+
     DrawTexturePro(
         texWeapons,
         weapons[selectedWeapon].spriteRect,
         (Rectangle) { 
             128 - weapons[selectedWeapon].spriteRect.width/2 + weapons[selectedWeapon].offset.x, 
-            256 - weapons[selectedWeapon].spriteRect.height + weapons[selectedWeapon].offset.y,
+            256 - weapons[selectedWeapon].spriteRect.height + weapons[selectedWeapon].offset.y + recoil,
             weapons[selectedWeapon].spriteRect.width,
             weapons[selectedWeapon].spriteRect.height
         },
