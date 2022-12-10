@@ -63,6 +63,8 @@ static Sound sfxPause;
 static Music mscSnowmen;
 static Font fntLilLabels;
 static Font fntReadswell;
+
+static Model mdlFence;
 #define LIL_LABELS_FONT_SIZE (7)
 
 int LightmapUniformLoc;
@@ -182,6 +184,10 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     fntLilLabels = LoadFontEx("assets/fonts/lil_labels.ttf", 7, 0, 0);              // Load a font
     fntReadswell = LoadFontEx("assets/fonts/readswell.ttf", 13, 0, 0);              // Load a font
     SetTextureFilter(GetFontDefault().texture, TEXTURE_FILTER_POINT);               // Ensure default font is pixelated
+
+    mdlFence = LoadModel("assets/models/fence.obj");
+    mdlFence.materials[0].maps[0].texture = LoadTexture("assets/textures/fence.png");
+    GenTextureMipmaps(&mdlFence.materials[0].maps[0].texture);
 }
 
 void UnloadAssets(void) {
@@ -372,7 +378,7 @@ void SetupEntireGame() {
     rotationY = 0;
     rotationX = 0;
     skyScroll = 0; 
-    selectedWeapon = 0;
+    selectedWeapon = 1;
 
 
     for (size_t i = 0; i < 128; i++)
@@ -630,14 +636,7 @@ void UpdateGame(void) {
 
     if (isMouseLocked) {
 
-        if (IsKeyPressed(KEY_ONE)) {
-            selectedWeapon = 0;
-        }
-
-        if (IsKeyPressed(KEY_TWO)) {
-            selectedWeapon = 1;
-        }
-
+       
         if ( weapons[selectedWeapon].cooldown <= 0) {
             if ((weapons[selectedWeapon].holdDown == false && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
             ||  (weapons[selectedWeapon].holdDown == true  && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
@@ -666,7 +665,7 @@ void UpdateGame(void) {
     }
     
 
-    DebugDrawInt(10, 240, "WEAP", selectedWeapon);
+    //DebugDrawInt(10, 240, "WEAP", selectedWeapon);
 
 
     rotationY -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
@@ -949,6 +948,8 @@ void RenderScene(void) {
     SetShaderValueTexture(shdProp, LightmapUniformLoc, rtxLightingTexture.texture);
     BeginShaderMode(shdProp);
 
+    //DrawModelEx(mdlFence, (Vector3){0,.4,0}, (Vector3){0,1,0}, 0,  (Vector3){0.435,.4,0.435}, GetColor(0x444444ff));
+
     for (size_t i = 0; i < NUM_SPRITES; i++)
     {
         if (sprites[i].enabled == false) {continue;}
@@ -1176,7 +1177,7 @@ void DrawDebugInfo(void) {
         }
     }
     const char* fps = TextFormat("%d FPS", GetFPS());
-    DebugDrawText(content.width - MeasureTextEx(fntLilLabels, fps, LIL_LABELS_FONT_SIZE, 1).x - 3, 2, fps);
+    //DebugDrawText(content.width - MeasureTextEx(fntLilLabels, fps, LIL_LABELS_FONT_SIZE, 1).x - 3, 2, fps);
     #undef MAX_FRAME_SAMPLES
 
     DrawDebug();
