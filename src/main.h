@@ -458,7 +458,7 @@ void UpdateGame(void) {
                 }
 
                 if (ai->stateCooldownEnabled == false) {
-                    ai->stateCooldown = GetRandomValue(20,40);
+                    ai->stateCooldown = GetRandomValue(25,56);
                     ai->stateCooldownEnabled = true;
                     ai->nextstate = AIS_Hunt;
                 }
@@ -725,7 +725,7 @@ void SpawnSnowman(int id, float x, float y) {
                 .escapeDistance = 33, 
                 .engageDistance = 9, 
                 .attackType = AIA_snowball,
-                .strafeSpeed = (float)GetRandomValue(1, 4) / 10.0,//((float)GetRandomValue(1, 4) / 1000.0) * GetRandomValue(0,1) == 0 ? -1 : 1, 
+                .strafeSpeed = (float)GetRandomValue(-8, 8) / 10.0,//((float)GetRandomValue(1, 4) / 1000.0) * GetRandomValue(0,1) == 0 ? -1 : 1, 
             },
         };
         
