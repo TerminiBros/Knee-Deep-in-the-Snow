@@ -337,6 +337,18 @@ static Weapon weapons[NUM_WEAPONS] = {
     },
 };
 
+static int WeaponDamages[16] = {
+    10,
+    0,
+    10,
+};
+
+static Rectangle PlayerBulletRects[16] = {
+    {0,0,1,1},
+    {0,0,24,24},
+    {24,0,24,24},
+};
+
 bool isMouseLocked = false;
 Vector2 mouseDelta = {0,0};
 Vector2 mouseSensitivity = {40.1,20.05};
@@ -446,7 +458,7 @@ void UpdateGame(void) {
                 }
 
                 if (ai->stateCooldownEnabled == false) {
-                    ai->stateCooldown = GetRandomValue(30,50);
+                    ai->stateCooldown = GetRandomValue(20,40);
                     ai->stateCooldownEnabled = true;
                     ai->nextstate = AIS_Hunt;
                 }
@@ -490,8 +502,11 @@ void UpdateGame(void) {
                 Vector2 rightDiff = Vector2Rotate(normdiff,90*DEG2RAD);
                 if (Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) > ai->desiredDistance + 2) {
                     ai->velocity = Vector2Scale( Vector2Normalize(diff), ai->huntSpeed + 1);
+                    ai->velocity = Vector2Add(ai->velocity, Vector2Scale(rightDiff,ai->strafeSpeed));
+                
                 } else if (Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) < ai->desiredDistance - 2) {
                     ai->velocity = Vector2Scale( Vector2Normalize(diff), -ai->huntSpeed + 1);
+                    ai->velocity = Vector2Add(ai->velocity, Vector2Scale(rightDiff,ai->strafeSpeed));
                 } else {
                     ai->velocity = Vector2Lerp(ai->velocity, Vector2Zero(), state.deltaTime * 10);
                 }
@@ -530,7 +545,7 @@ void UpdateGame(void) {
                         (Vector2){sprites[i].x, sprites[i].y}, sprites[i].size,
                         (Vector2){sprites[ei].x, sprites[ei].y}, sprites[ei].size
                     )) {
-                        sprites[ei] = (GameSprite){0};
+                        sprites[ei].health -= WeaponDamages[sprites[i].bulletType];
                         markForDeath = true;
                     }
                 }
@@ -542,6 +557,18 @@ void UpdateGame(void) {
 
             if (markForDeath) {
                 // TODO: Do extra fancy stuff per bullet type here!
+
+                if (sprites[i].bulletType == BTP_Bulb) {
+                    for (size_t ei = 0; ei < NUM_SPRITES; ei++)
+                    {
+                        if (sprites[ei].enabled && sprites[ei].type == GST_Snowman) {
+                            if (Vector2Distance((Vector2){sprites[i].x, sprites[i].y}, (Vector2){sprites[ei].x, sprites[ei].y}) < 3.0) {
+                                sprites[ei].health -= WeaponDamages[BTP_Bulb2];
+                            }
+                        }
+                    }       
+                }
+
                 sprites[i] = (GameSprite){0};
             }
         }
@@ -642,9 +669,9 @@ void SpawnPlayerBullet(int id, float x, float y, float h, Color c, Vector2 vel, 
             .x = x, 
             .y = y, 
             .c = c, 
-            .rect = (Rectangle){0,0,24,24}, 
+            .rect = PlayerBulletRects[type], 
             .hover = h,
-            .size = 1,
+            .size = .6,
             .ai.velocity = vel,
             .bulletType = type,
         };
@@ -694,11 +721,11 @@ void SpawnSnowman(int id, float x, float y) {
                 .wanderSpeed = 5,
                 .runSpeed = 6.8,
                 .huntSpeed = 5.5,
-                .desiredDistance = 5 + ((float)GetRandomValue(-5,2) / 1.0), 
+                .desiredDistance = 5 + ((float)GetRandomValue(-20,20) / 10.0), 
                 .escapeDistance = 33, 
                 .engageDistance = 9, 
                 .attackType = AIA_snowball,
-                .strafeSpeed = ((float)GetRandomValue(10, 40) / 20.0) * GetRandomValue(0,1) == 0 ? -1 : 1, 
+                .strafeSpeed = (float)GetRandomValue(1, 4) / 10.0,//((float)GetRandomValue(1, 4) / 1000.0) * GetRandomValue(0,1) == 0 ? -1 : 1, 
             },
         };
         
@@ -987,6 +1014,11 @@ void DrawWeapons(void) {
     }
 
     float recoil = Lerp(0, 10, weapons[selectedWeapon].animTimer / weapons[selectedWeapon].animTimerMax);
+    float altRot = 0;
+    if (weapons[selectedWeapon].specialAnimation) {
+        recoil *= -4;
+        altRot = Lerp(0,-10, weapons[selectedWeapon].animTimer / weapons[selectedWeapon].animTimerMax);
+    }
 
     DrawTexturePro(
         texWeapons,
@@ -997,7 +1029,7 @@ void DrawWeapons(void) {
             weapons[selectedWeapon].spriteRect.width,
             weapons[selectedWeapon].spriteRect.height
         },
-        weapons[selectedWeapon].pivot, weapons[selectedWeapon].rotation,
+        weapons[selectedWeapon].pivot, weapons[selectedWeapon].rotation + altRot,
         WHITE
     );
 }
