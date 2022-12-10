@@ -266,11 +266,55 @@ GameSprite sprites[NUM_SPRITES] = { 0
     //{.type = GST_Prop, .x = -35, .y = -10, .c = WHITE, .enabled = true, .rect = Prop_Tree, .scale = {4,4}},
 };
 
+typedef struct Weapon {
+// params
+    bool specialAnimation;
+    bool holdDown;
+    int frames;
+    float frameSpeed;
+    int bulletType;
+    float cooldownMax;
+    Rectangle spriteRect;
+    Vector2 pivot;
+    Vector2 offset;
+// runtime
+    float cooldown;
+    float animTimer;
+    float rotation;
+} Weapon;
+
 static Vector2 playerPos = {0,0};
 static Vector2 playerVel = {0,0};
 static float rotationY = 0;
 static float rotationX = 0;
-static float skyScroll = 0;
+static float skyScroll = 0; 
+static int selectedWeapon = 0;
+
+static Weapon weapons[2] = {
+    {   // CandyCane
+        .bulletType = BTP_Melee,
+        .frames = 0,
+        .frameSpeed = 0,
+        .cooldown = 0.5,
+        .specialAnimation = true,
+        .holdDown = false,
+        .offset = {64,100+40},
+        .pivot = {64,100},
+        .spriteRect = { 288, 0, 128, 160 }
+    },
+    {   // BulbLauncher
+        .bulletType = BTP_Bulb,
+        .frames = 3,
+        .frameSpeed = 3,
+        .cooldown = 0.8,
+        .specialAnimation = false,
+        .holdDown = false,
+        .offset = {0,0},
+        .pivot = {0,0},
+        .spriteRect = { 0, 0, 96, 80 }
+    },
+};
+
 bool isMouseLocked = false;
 Vector2 mouseDelta = {0,0};
 Vector2 mouseSensitivity = {40.1,20.05};
@@ -394,7 +438,28 @@ void UpdateGame(void) {
         }
 
     }
-    
+
+
+
+    /// $PLAYER CODE
+
+    if (isMouseLocked) {
+
+        if (IsKeyPressed(KEY_ONE)) {
+            selectedWeapon = 0;
+        }
+
+        if (IsKeyPressed(KEY_TWO)) {
+            selectedWeapon = 1;
+        }
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+
+
+
+        }
+
+    }
 
 
     rotationY -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
@@ -663,7 +728,7 @@ void RenderScene(void) {
     BeginShaderMode(shdPropEm);
 
     BeginBlendMode(BLEND_ALPHA);
-    
+
     for (size_t i = 0; i < NUM_SPRITES; i++)
     {
         if (sprites[i].enabled == false) {continue;}
@@ -728,6 +793,20 @@ void RenderMapOverlay(void) {
 
 }
 
+void DrawWeapons(void) {
+    DrawTexturePro(
+        texWeapons,
+        weapons[selectedWeapon].spriteRect,
+        (Rectangle) { 
+            128 - weapons[selectedWeapon].spriteRect.width/2 + weapons[selectedWeapon].offset.x, 
+            256 - weapons[selectedWeapon].spriteRect.height + weapons[selectedWeapon].offset.y,
+            weapons[selectedWeapon].spriteRect.width,
+            weapons[selectedWeapon].spriteRect.height
+        },
+        weapons[selectedWeapon].pivot, weapons[selectedWeapon].rotation,
+        WHITE
+    );
+}
 
 void DrawGame(void) {
     ClearBackground(RAYWHITE);
@@ -736,7 +815,7 @@ void DrawGame(void) {
     
     RenderScene();
 
-    DrawTexture(texWeapons, 128 - texWeapons.width/2, 256 - texWeapons.height, WHITE);
+    DrawWeapons();
 
     if (IsKeyDown(KEY_TAB)) {
         RenderMapOverlay();
