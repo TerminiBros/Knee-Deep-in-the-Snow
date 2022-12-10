@@ -181,6 +181,18 @@ void UnloadAssets(void) {
 enum GSType {
     GST_Prop,
     GST_Snowman,
+    GST_EnemyBullet,
+    GST_PlayerBullet
+};
+
+enum BulletType {
+// player
+    BTP_Melee,
+    BTP_Bulb,
+    BTP_Bulb2,
+// enemy 
+    BTE_Snowball,
+    BTE_Explosion,
 };
 
 enum AI_Attack {
@@ -189,10 +201,10 @@ enum AI_Attack {
     AIA_bomb,
 };
 
+
 enum AI_State {
     AIS_Wander,
     AIS_Hunt,
-    AIS_Attack,
     AIS_Run,
     AIS_Goto,
 };
@@ -213,7 +225,13 @@ typedef struct AI {
 
 //-
     float desiredDistance;
+    float escapeDistance;
+    float engageDistance;
+    float wanderSpeed;
+    float huntSpeed;
+    float runSpeed;
     int attackType;
+    bool friendly;
 } AI;
 
 typedef struct GameSprite {
@@ -223,6 +241,7 @@ typedef struct GameSprite {
     int emissiveFrames;
     float emissiveFrameSpeed;
     float x, y;
+    float hover;
     float angle;
     uint16_t animID;
     bool isAnimated;
@@ -284,6 +303,16 @@ void UpdateGame(void) {
             sprites[127 + 10 + i].c = BulbColorPool[colorV],
             sprites[127 + 10 + i].light = (Light){.color = BulbLightColorPool[colorV], .radius = 1.2f};
         }
+
+        sprites[40].hasAI = true;
+        sprites[40].emissiveFrames = 0;
+        sprites[40].ai = (AI){
+            .friendly = true, 
+            .desiredDistance = 4, 
+            .escapeDistance = 20, 
+            .engageDistance = 9,
+            .wanderSpeed = 4,
+        };
         
         once = true;
     }
@@ -314,13 +343,14 @@ void UpdateGame(void) {
         if (sprites[i].hasAI == true) {
 
             AI* ai = &sprites[i].ai;
+            if (ai->friendly) {ai->state = AIS_Wander;}
 
             switch (sprites[i].ai.state)
             {
 
             case AIS_Wander: {
                 if (ai->extraCooldown <= 0) {
-                    ai->extraCooldown = GetRandomValue(1,5);
+                    ai->extraCooldown = GetRandomValue(1,5) + ai->friendly ? 2.3f : 0;
 
                     sprites[i].angle = GetRandomValue(0,360);
                     ai->velocity = Vector2Scale( Vector2Rotate((Vector2){0,1}, sprites[i].angle * DEG2RAD), 7 );
@@ -336,11 +366,6 @@ void UpdateGame(void) {
             }
 
             case AIS_Hunt: {
-
-                break;
-            }
-
-            case AIS_Attack: {
 
                 break;
             }
@@ -443,9 +468,18 @@ void SpawnSnowman(int id, float x, float y) {
             .c = RED,
             .size = 1,
             .hasLight = true,
-            .light = {.radius = 0.4, .color = RED},
+            //.light = {.radius = 0.4, .color = RED},
             .hasAI = true,
-            .ai = {.desiredDistance = 4, .attackType = AIA_snowball},
+            .ai = {
+                .friendly =false,
+                .wanderSpeed = 7,
+                .runSpeed = 8,
+                .huntSpeed = 8,
+                .desiredDistance = 4, 
+                .escapeDistance = 20, 
+                .engageDistance = 9, 
+                .attackType = AIA_snowball
+            },
         };
         
         return;
@@ -621,15 +655,16 @@ void RenderScene(void) {
     {
         if (sprites[i].enabled == false) {continue;}
         
-        if (sprites[i].type == GST_Prop && sprites[i].emissiveFrames > 0) {
-            Vector2 pos = (Vector2){sprites[i].x, sprites[i].y};
-
-            if (sprites[i].baseIsEmissive) {
-                DrawBillboardRec(cam, texProps, 
-                    (Rectangle) {sprites[i].rect.x, sprites[i].rect.y, sprites[i].rect.width, sprites[i].rect.height }, 
-                    (Vector3){ pos.x, sprites[i].scale.y / 2, pos.y }, sprites[i].scale, sprites[i].c
-                );
-            }
+        
+        Vector2 pos = (Vector2){sprites[i].x, sprites[i].y};
+        if (sprites[i].baseIsEmissive) {
+            DrawBillboardRec(cam, texProps, 
+                (Rectangle) {sprites[i].rect.x, sprites[i].rect.y, sprites[i].rect.width, sprites[i].rect.height }, 
+                (Vector3){ pos.x, sprites[i].scale.y / 2, pos.y }, sprites[i].scale, sprites[i].c
+            );
+        }
+        
+        if (sprites[i].emissiveFrames > 0) {
 
             if (Vector2Distance(pos, playerPos) > 50) {continue;}
 
