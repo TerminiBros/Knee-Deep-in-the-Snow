@@ -1,4 +1,5 @@
 #pragma once
+#include <math.h>
 #include <raylib.h>
 #ifdef MAIN_IMPL
 #include <reasings.h>
@@ -277,10 +278,12 @@ typedef struct Weapon {
     Rectangle spriteRect;
     Vector2 pivot;
     Vector2 offset;
+    int ammoCap;
 // runtime
     float cooldown;
     float animTimer;
     float rotation;
+    int ammo;
 } Weapon;
 
 static Vector2 playerPos = {0,0};
@@ -290,23 +293,27 @@ static float rotationX = 0;
 static float skyScroll = 0; 
 static int selectedWeapon = 0;
 
-static Weapon weapons[2] = {
+#define NUM_WEAPONS (2)
+static Weapon weapons[NUM_WEAPONS] = {
     {   // CandyCane
         .bulletType = BTP_Melee,
+        .ammo = -255,
+        .ammoCap = -255,
         .frames = 0,
         .frameSpeed = 0,
-        .cooldown = 0.5,
+        .cooldownMax = 0.5,
         .specialAnimation = true,
         .holdDown = false,
         .offset = {64,100+40},
         .pivot = {64,100},
-        .spriteRect = { 288, 0, 128, 160 }
+        .spriteRect = { 288, 0, 128, 160 },
     },
     {   // BulbLauncher
         .bulletType = BTP_Bulb,
+        .ammoCap = 6,
         .frames = 3,
         .frameSpeed = 3,
-        .cooldown = 0.8,
+        .cooldownMax = 0.8,
         .specialAnimation = false,
         .holdDown = false,
         .offset = {0,0},
@@ -339,7 +346,7 @@ void UpdateGame(void) {
             SpawnSnowman(127 + i, GetRandomValue(-80, 80),GetRandomValue(-80, 80));
         }
         
-        for (size_t i = 0; i < 10; i++)
+        for (size_t i = 0; i < 15; i++)
         {
             SpawnProp(127 + 10 + i, GetRandomValue(-128,128), GetRandomValue(-128,128), true, Prop_Bulb, (Vector2){3,3} );
             sprites[127 + 10 + i].hasLight = true;
@@ -357,6 +364,12 @@ void UpdateGame(void) {
             .engageDistance = 9,
             .wanderSpeed = 4,
         };
+
+        SpawnSnowman(300, 0, 10);
+        sprites[300].hasAI = false;
+        sprites[300].angle = 90;
+        sprites[300].hasLight = true;
+        sprites[300].light = (Light){.color = PURPLE, .radius = 2};
         
         once = true;
     }
@@ -455,11 +468,19 @@ void UpdateGame(void) {
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 
-
+            if ( weapons[selectedWeapon].cooldown <= 0 ) {
+                weapons[selectedWeapon].cooldown = weapons[selectedWeapon].cooldownMax;
+            }
 
         }
 
     }
+
+    for (size_t i = 0; i < NUM_WEAPONS; i++)
+    {
+        weapons[i].cooldown -= state.deltaTime;
+    }
+    
 
     DebugDrawInt(10, 240, "WEAP", selectedWeapon);
 
@@ -566,9 +587,9 @@ void DrawSnowman(Camera cam, int spriteIndex) {
 
     Rectangle faces[4] = {
         (Rectangle){0,0,48,48},
-        (Rectangle){48,0,48,48},
-        (Rectangle){48*2,0,1,1},
         (Rectangle){48*3,0,48,48},
+        (Rectangle){48*2,0,1,1},
+        (Rectangle){48,0,48,48},
     };
 
     float bob0 = 0.03 * sin(state.unpausedTime * 4);
@@ -576,7 +597,26 @@ void DrawSnowman(Camera cam, int spriteIndex) {
     float bob2 = 0.01 * sin(state.unpausedTime * 3.5);
 
 
-    int faceToDraw = (int)state.unpausedTime % 4;
+
+
+    int faceToDraw = 0; //(int)state.unpausedTime % 4;
+
+    Vector2 positionToCameraDifference = Vector2Subtract( (playerPos) , (Vector2){sprites[i].x,sprites[i].y} );
+    
+    Vector2 directionOffsetVector = Vector2Rotate((Vector2){0,1}, sprites[i].angle);
+
+    const float sliceAngle = 360 / 4;
+
+    //float directionOffsetAngle = RAD2DEG * atan2f(directionOffsetVector.x, directionOffsetVector.y);
+
+
+    float angleToCamera = 180 + RAD2DEG * atan2f(positionToCameraDifference.x, positionToCameraDifference.y);
+    angleToCamera += 360 - sprites[i].angle + 45; //directionOffsetAngle;
+    angleToCamera = (int)angleToCamera % 360;
+
+    int indexIntoSprites = (int)floorf(angleToCamera / sliceAngle);
+
+    faceToDraw = indexIntoSprites;
 
 
     DrawBillboardRec(cam, texSnowman, r0, (Vector3){ sprites[i].x, 0.5 + bob0, sprites[i].y }, (Vector2){1,1}, WHITE);
@@ -790,12 +830,21 @@ void RenderMapOverlay(void) {
     {
         if (!sprites[i].enabled) continue;
         DrawPixel(ox + sprites[i].x, oy + sprites[i].y, sprites[i].c);
+        //if (sprites[i].hasAI) {
+            Vector2 lookLine = Vector2Add(Vector2Rotate((Vector2){0, 4}, (sprites[i].angle) * DEG2RAD), (Vector2){sprites[i].x, sprites[i].y});
+            DrawLine( ox + sprites[i].x, oy + sprites[i].y, ox + lookLine.x, oy + lookLine.y, ORANGE);
+        //}
     }
 
 
 }
 
 void DrawWeapons(void) {
+
+    if (weapons[selectedWeapon].cooldown > 0) {
+        DrawTexture(texLight0, 20, 20, RED);
+    }
+
     DrawTexturePro(
         texWeapons,
         weapons[selectedWeapon].spriteRect,
