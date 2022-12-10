@@ -60,6 +60,7 @@ static Shader shdWarp;
 static Shader shdProp;
 static Shader shdPropEm;
 static Sound sfxPause;
+static Music mscSnowmen;
 static Font fntLilLabels;
 static Font fntReadswell;
 #define LIL_LABELS_FONT_SIZE (7)
@@ -97,6 +98,7 @@ typedef struct State { // Global state, keeps track of time and mode
     double deltaTime;
     void (*UpdateFunc)(void);
     void (*DrawFunc)(void);
+    Music currentMusic;
     bool isPaused;
     bool wasUnfocused;
 } State;
@@ -128,6 +130,7 @@ static void UnloadAssets(void);
 static void UpdateGame(void);
 static void DrawGame(void);
 
+static void SetMusic(Music music, bool loop);
 static void PauseGame(void);
 static void ResumeGame(void);
 static void UpdatePaused(void);
@@ -175,6 +178,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
     LightmapUniformLoc = GetShaderLocation(shdProp, "texLightmap");
 
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
+    mscSnowmen = LoadMusicStream("assets/audio/snowmen.ogg");
     fntLilLabels = LoadFontEx("assets/fonts/lil_labels.ttf", 7, 0, 0);              // Load a font
     fntReadswell = LoadFontEx("assets/fonts/readswell.ttf", 13, 0, 0);              // Load a font
     SetTextureFilter(GetFontDefault().texture, TEXTURE_FILTER_POINT);               // Ensure default font is pixelated
@@ -407,6 +411,7 @@ void SetupEntireGame() {
         .wanderSpeed = 4,
     };
 
+    SetMusic(mscSnowmen, true);
     
 }
 
@@ -1098,11 +1103,23 @@ void DrawGame(void) {
     if (fadeTimer > 0) { DrawRectangle(0, 0, content.width, content.height, Fade(BLACK, EaseQuadOut(fadeTimer, 0, 1, 0.4))); fadeTimer -= state.deltaTime; }
 }
 
+
+void SetMusic(Music music, bool loop) {
+    if (IsMusicStreamPlaying(state.currentMusic)) { StopMusicStream(state.currentMusic); }
+    SetMusicVolume(music, 0.9f);
+    music.looping = loop;
+    state.currentMusic = music;
+    PlayMusicStream(music);
+}
+
 void PauseGame(void) {
     state.isPaused = true;
     state.prevMode = state.mode;
     state.mode = MODE_PAUSED;
     if (state.wasUnfocused) { return; }
+    if (IsMusicStreamPlaying(state.currentMusic)) {
+        PauseMusicStream(state.currentMusic);
+    }
     PlaySoundPitch(sfxPause, 1.0, false);
 }
 
@@ -1110,7 +1127,10 @@ void ResumeGame(void) {
     state.isPaused = false;
     state.mode = state.prevMode;
     if (state.wasUnfocused) { return; }
-    PlaySoundPitch(sfxPause, 1.1, false);
+    if (!IsMusicStreamPlaying(state.currentMusic)) {
+        ResumeMusicStream(state.currentMusic);
+    }
+    PlaySoundPitch(sfxPause, 1.0, false);
 }
 
 void UpdatePaused(void) {

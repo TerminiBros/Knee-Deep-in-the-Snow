@@ -51,6 +51,7 @@ void Update(void) {
     SetDebugFont(fntLilLabels);
     SetDebugFontSize(7);
 #endif
+    UpdateMusicStream(state.currentMusic);
     UpdateInput();
 
     state.deltaTime = GetFrameTime();
