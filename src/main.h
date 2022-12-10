@@ -140,6 +140,7 @@ static void UpdatePaused(void);
 static void ScaleWindowToContent(void);
 static void DrawDebugInfo(void);
 
+void SpawnEnemyBullet(int id, float x, float y, float h, Color c, Vector2 vel, int type);
 void SpawnPlayerBullet(int id, float x, float y, float h, Color c, Vector2 vel, int type);
 void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 scale);
 void SpawnSnowman(int id, float x, float y);
@@ -311,6 +312,7 @@ typedef struct Weapon {
 
 static Vector2 playerPos = {0,0};
 static Vector2 playerVel = {0,0};
+static int playerHealth = 10;
 static float rotationY = 0;
 static float rotationX = 0;
 static float skyScroll = 0; 
@@ -370,6 +372,18 @@ Vector2 moveSpeed = {10,10};
 
 bool once = false;
 
+int lastNum = 10;
+
+void NewWave(void) {
+    lastNum = (int)((float)lastNum * 1.5);
+    for (size_t i = 0; i < lastNum; i++)
+    {
+        float sx = GetRandomValue(20, 80) * (GetRandomValue(0,1) == 0 ? 1:-1);
+        float sy = GetRandomValue(20, 80) * (GetRandomValue(0,1) == 0 ? 1:-1);
+        SpawnSnowman(127 + 15 + i, sx, sy);
+    }
+}
+
 void SetupEntireGame() {
     ClearAllSprites();
 
@@ -379,6 +393,9 @@ void SetupEntireGame() {
     rotationX = 0;
     skyScroll = 0; 
     selectedWeapon = 1;
+    playerHealth = 10;
+
+    lastNum = 10;
 
 
     for (size_t i = 0; i < 128; i++)
@@ -391,21 +408,16 @@ void SetupEntireGame() {
         }
     }
 
-    for (size_t i = 0; i < 10; i++)
-    {
-        float sx = GetRandomValue(20, 80) * (GetRandomValue(0,1) == 0 ? 1:-1);
-        float sy = GetRandomValue(20, 80) * (GetRandomValue(0,1) == 0 ? 1:-1);
-        SpawnSnowman(127 + i, sx, sy);
-    }
-    
     for (size_t i = 0; i < 15; i++)
     {
-        SpawnProp(127 + 10 + i, GetRandomValue(-128,128), GetRandomValue(-128,128), true, Prop_Bulb, (Vector2){3,3} );
-        sprites[127 + 10 + i].hasLight = true;
+        SpawnProp(127 + i, GetRandomValue(-128,128), GetRandomValue(-128,128), true, Prop_Bulb, (Vector2){3,3} );
+        sprites[127 + i].hasLight = true;
         int colorV = GetRandomValue(0,4);
-        sprites[127 + 10 + i].c = BulbColorPool[colorV],
-        sprites[127 + 10 + i].light = (Light){.color = BulbLightColorPool[colorV], .radius = 1.2f};
+        sprites[127 + i].c = BulbColorPool[colorV],
+        sprites[127 + i].light = (Light){.color = BulbLightColorPool[colorV], .radius = 1.2f};
     }
+
+    NewWave();
 
     sprites[40].hasAI = true;
     sprites[40].emissiveFrames = 0;
@@ -416,6 +428,7 @@ void SetupEntireGame() {
         .engageDistance = 9,
         .wanderSpeed = 4,
     };
+
 
     SetMusic(mscSnowmen, true);
     
@@ -446,10 +459,11 @@ void UpdateGame(void) {
         }
     }
 
-    if (IsKeyPressed(KEY_R)) {
+    if (IsKeyPressed(KEY_R) || playerHealth <= 0) {
         SetupEntireGame();
     }
 
+    int snowmenCount = 0;
 
     for (size_t i = 0; i < NUM_SPRITES; i++)
     {
@@ -458,6 +472,8 @@ void UpdateGame(void) {
         if (sprites[i].health > -255 && sprites[i].health < 0) {
             sprites[i].enabled = false;
         }
+
+        if (sprites[i].type == GST_Snowman) {snowmenCount += 1;}
 
         if (sprites[i].hasAI == true) {
 
@@ -531,6 +547,13 @@ void UpdateGame(void) {
                     ai->state = AIS_Attack;
                 }
 
+                if (ai->attackCooldown <= 0 && Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) < 15) {
+                    ai->attackCooldown = GetRandomValue(10,20) / 10.0;
+                    SpawnEnemyBullet(FindFreeID(),sprites[i].x,sprites[i].y, 1.5f, WHITE, Vector2Scale(normdiff, 30), BTE_Snowball); 
+                }
+                
+                ai->attackCooldown -= state.deltaTime;
+
                 break;
             }
 
@@ -547,9 +570,18 @@ void UpdateGame(void) {
                     ai->velocity = Vector2Add(ai->velocity, Vector2Scale(rightDiff,ai->strafeSpeed));
                 } else {
                     ai->velocity = Vector2Lerp(ai->velocity, Vector2Zero(), state.deltaTime * 10);
+
                 }
                 ai->velocity = Vector2Add(ai->velocity, Vector2Scale(rightDiff,ai->strafeSpeed));
                 sprites[i].angle = RAD2DEG * (-atan2f(normdiff.y, normdiff.x)) + 180 + 90;
+
+                
+                if (ai->attackCooldown <= 0) {
+                    ai->attackCooldown = GetRandomValue(10,20) / 10.0;
+                    SpawnEnemyBullet(FindFreeID(),sprites[i].x,sprites[i].y, 1.5f, WHITE, Vector2Scale(normdiff, 30), BTE_Snowball); 
+                }
+                
+                ai->attackCooldown -= state.deltaTime;
                 
                 break;
             }
@@ -580,7 +612,21 @@ void UpdateGame(void) {
             sprites[i].x += sprites[i].ai.velocity.x * state.deltaTime;
             sprites[i].y += sprites[i].ai.velocity.y * state.deltaTime;
             sprites[i].hover -= state.deltaTime;
+        }
 
+        if (sprites[i].type == GST_EnemyBullet) {
+            if (CheckCollisionPointCircle( playerPos, (Vector2){sprites[i].x,sprites[i].y}, 0.6f )) {
+                playerHealth -= 1;
+                //TraceLog(LOG_INFO, "player take damage");
+                sprites[i] = (GameSprite){0};    
+            }
+            if (sprites[i].hover <= 0) {
+                sprites[i] = (GameSprite){0};
+            }
+        }
+
+        if (sprites[i].type == GST_PlayerBullet ) {
+            
             bool markForDeath = false;
 
             for (size_t ei = 0; ei < NUM_SPRITES; ei++)
@@ -657,6 +703,10 @@ void UpdateGame(void) {
 
     }
 
+    if (snowmenCount == 0) {
+        NewWave();
+    }
+
     for (size_t i = 0; i < NUM_WEAPONS; i++)
     {
         weapons[i].cooldown -= state.deltaTime;
@@ -728,6 +778,22 @@ void SpawnPlayerBullet(int id, float x, float y, float h, Color c, Vector2 vel, 
             sprites[id].hasLight = true;
             sprites[id].light = (Light){.radius = .4, .color = c};
         }
+    }
+}
+
+void SpawnEnemyBullet(int id, float x, float y, float h, Color c, Vector2 vel, int type) {
+    if (!sprites[id].enabled) {
+        sprites[id] = (GameSprite){
+            .enabled = true,
+            .type = GST_EnemyBullet, 
+            .x = x, 
+            .y = y, 
+            .c = c, 
+            .hover = h,
+            .size = .5,
+            .ai.velocity = vel,
+            .bulletType = type,
+        };
     }
 }
 
@@ -969,7 +1035,8 @@ void RenderScene(void) {
         }
 
         case GST_EnemyBullet: {
-            DrawBillboardRec(cam, texBullets, sprites[i].rect, (Vector3){ sprites[i].x, sprites[i].scale.y / 2 + sprites[i].hover, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
+            const Rectangle r = (Rectangle){0,0,48,48};
+            DrawBillboardRec(cam, texSnowman, r, (Vector3){ sprites[i].x, sprites[i].scale.y / 2 + sprites[i].hover, sprites[i].y }, (Vector2){0.4,0.4}, WHITE);
             break;
         }
         
@@ -1050,6 +1117,9 @@ void RenderMapOverlay(void) {
     {
         if (!sprites[i].enabled) continue;
         DrawPixel(ox + sprites[i].x, oy + sprites[i].y, sprites[i].c);
+        if (sprites[i].type == GST_Snowman) {
+            DrawCircle(ox + sprites[i].x, oy + sprites[i].y, 2, sprites[i].c);
+        }
         //if (sprites[i].hasAI) {
             //Vector2 lookLine = Vector2Add(Vector2Rotate((Vector2){0, 4}, (sprites[i].angle) * DEG2RAD), (Vector2){sprites[i].x, sprites[i].y});
             //DrawLine( ox + sprites[i].x, oy + sprites[i].y, ox + lookLine.x, oy + lookLine.y, ORANGE);
@@ -1099,6 +1169,9 @@ void DrawGame(void) {
     }
 
     DrawText(TextFormat("%s v%s", TITLE, VERSION), 3, 2, 10, DARKGRAY);
+
+    const char* t = TextFormat("HP: %d%%", playerHealth*10);
+    DrawText(t, 128 - MeasureText(t,10)/2, 244, 10, RED);
 
     static double fadeTimer = 0.4;
     if (fadeTimer > 0) { DrawRectangle(0, 0, content.width, content.height, Fade(BLACK, EaseQuadOut(fadeTimer, 0, 1, 0.4))); fadeTimer -= state.deltaTime; }
