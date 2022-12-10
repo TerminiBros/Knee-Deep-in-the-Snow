@@ -662,6 +662,8 @@ void RenderScene(void) {
     // draw emissive 
     BeginShaderMode(shdPropEm);
 
+    BeginBlendMode(BLEND_ALPHA);
+    
     for (size_t i = 0; i < NUM_SPRITES; i++)
     {
         if (sprites[i].enabled == false) {continue;}
@@ -687,6 +689,8 @@ void RenderScene(void) {
             );
         }
     }
+
+    EndBlendMode();
 
     EndShaderMode();    
 
