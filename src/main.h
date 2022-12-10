@@ -110,7 +110,12 @@ static void UpdatePaused(void);
 static void ScaleWindowToContent(void);
 static void DrawDebugInfo(void);
 
-int SpawnSnowman(float x, float y);
+void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 scale);
+void SpawnSnowman(int id, float x, float y);
+void ClearAllSprites(void);
+void ClearSprite(int i);
+
+
 
 #ifdef MAIN_IMPL
 #include <raymath.h>
@@ -161,6 +166,13 @@ enum AI_Attack {
     AIA_bomb,
 };
 
+enum AI_State {
+    AIS_Wander,
+    AIS_Hunt,
+    AIS_Attack,
+    AIS_Run,
+};
+
 typedef struct Light {
   float radius;
   Color color;  
@@ -169,6 +181,7 @@ typedef struct Light {
 typedef struct AI {
     bool isAttacking;
     float attackCooldown;
+    int state;
 //-
     float desiredDistance;
     int attackType;
@@ -177,6 +190,7 @@ typedef struct AI {
 typedef struct GameSprite {
     bool enabled;
     int type;
+    bool hasEmissive;
     float x, y;
     float angle;
     uint16_t animID;
@@ -193,8 +207,9 @@ typedef struct GameSprite {
 } GameSprite;
 
 #define Prop_Tree (Rectangle){0,0,48,64}
+#define Prop_Bulb (Rectangle){48*2,0,48,64}
 
-GameSprite sprites[NUM_SPRITES] = {
+GameSprite sprites[NUM_SPRITES] = { 0
     //{.type = GST_Snowman, .x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1.2, .color = RED}},
     //{.type = GST_Snowman, .x = 50, .y = 32, .c = PURPLE, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1, .color = PINK}},
     //{.type = GST_Prop, .x = -40, .y = -14, .c = WHITE, .enabled = true, .rect = Prop_Tree, .scale = {4,4}},
@@ -216,16 +231,22 @@ bool once = false;
 void UpdateGame(void) {
     if (!once) {
         
-        for (size_t i = 1; i < 128; i++)
+        for (size_t i = 0; i < 128; i++)
         {
-            sprites[i] = (GameSprite){.type = GST_Prop, .x = GetRandomValue(-128,128), .y = GetRandomValue(-128,128), .c = WHITE, .enabled = true, .hasLight = false, .rect = Prop_Tree, .scale = {GetRandomValue(3,4),4}, .size = 2};// .light = {.radius = 1, .color = BLUE}};
+            SpawnProp(i, GetRandomValue(-128,128), GetRandomValue(-128,128), true, Prop_Tree, (Vector2){GetRandomValue(3,4),4} );
         }
 
         for (size_t i = 0; i < 10; i++)
         {
-            SpawnSnowman(GetRandomValue(-80, 80),GetRandomValue(-80, 80));
+            SpawnSnowman(127 + i, GetRandomValue(-80, 80),GetRandomValue(-80, 80));
         }
         
+        for (size_t i = 0; i < 10; i++)
+        {
+            SpawnProp(127 + 10 + i, GetRandomValue(-128,128), GetRandomValue(-128,128), true, Prop_Bulb, (Vector2){3,3} );
+            sprites[127 + 10 + i].hasLight = true;
+            sprites[127 + 10 + i].light = (Light){.color = GREEN, .radius = 1.2f};
+        }
         
         once = true;
     }
@@ -248,6 +269,47 @@ void UpdateGame(void) {
         }
     }
 
+
+    for (size_t i = 0; i < NUM_SPRITES; i++)
+    {
+        if (sprites[i].enabled == false) {continue;}
+
+        if (sprites[i].hasAI == true) {
+
+
+            switch (sprites[i].ai.state)
+            {
+            case AIS_Wander: {
+
+                break;
+            }
+
+            case AIS_Run: {
+
+                break;
+            }
+
+            case AIS_Hunt: {
+
+                break;
+            }
+
+            case AIS_Attack: {
+
+                break;
+            }   
+                
+            default:
+                TraceLog(LOG_ERROR, "Sprite with ID [%d] has unknown AI state: [%d]. This sprite will be deleted.", i, sprites[i].ai.state);
+                sprites[i] = (GameSprite){0};
+                break;
+            }
+
+
+        }
+
+    }
+    
 
 
     rotationY -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
@@ -273,28 +335,58 @@ void UpdateGame(void) {
     
 }
 
+void ClearSprite(int id) {
+    sprites[id] = (GameSprite){0};
+}
 
-int SpawnSnowman(float x, float y) {
+void ClearAllSprites(void) {
     for (size_t i = 0; i < NUM_SPRITES; i++)
     {
-        if (!sprites[i].enabled) {
-            
-            sprites[i] = (GameSprite){
-                .enabled = true,
-                .type = GST_Snowman, 
-                .x = x, 
-                .y = y, 
-                .c = RED, 
-                .hasLight = true,
-                .light = {.radius = 1.2, .color = RED},
-                .hasAI = true,
-                .ai = {.desiredDistance = 4, .attackType = AIA_snowball},
-            };
-            
-            return i;
-        }
+        sprites[i] = (GameSprite){0};
     }
-    return -1;
+}
+
+int FindFreeID(void) {
+    for (size_t i = 0; i < NUM_SPRITES; i++)
+    {
+        if (!sprites[i].enabled) {return i;}
+    } 
+    return -1;   
+}
+
+void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 scale) {
+    if (!sprites[id].enabled) {
+        sprites[id] = (GameSprite){
+            .enabled = true,
+            .type = GST_Prop, 
+            .x = x, 
+            .y = y, 
+            .c = WHITE, 
+            .rect = prop, 
+            .scale = scale, 
+            .size = 2
+        };
+    }
+}
+
+void SpawnSnowman(int id, float x, float y) {
+    if (!sprites[id].enabled) {
+        
+        sprites[id] = (GameSprite){
+            .enabled = true,
+            .type = GST_Snowman, 
+            .x = x, 
+            .y = y, 
+            .c = RED,
+            .size = 1,
+            .hasLight = true,
+            .light = {.radius = 0.4, .color = RED},
+            .hasAI = true,
+            .ai = {.desiredDistance = 4, .attackType = AIA_snowball},
+        };
+        
+        return;
+    }
 }
 
 void DrawSnowman(Camera cam, int spriteIndex) {
