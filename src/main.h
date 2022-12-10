@@ -663,7 +663,7 @@ void SpawnSnowman(int id, float x, float y) {
                 .wanderSpeed = 5,
                 .runSpeed = 6.8,
                 .huntSpeed = 5.5,
-                .desiredDistance = 5 + ((float)GetRandomValue(0,15) / 1.0), 
+                .desiredDistance = 5 + ((float)GetRandomValue(-5,7) / 1.0), 
                 .escapeDistance = 33, 
                 .engageDistance = 9, 
                 .attackType = AIA_snowball,
