@@ -110,6 +110,8 @@ static void UpdatePaused(void);
 static void ScaleWindowToContent(void);
 static void DrawDebugInfo(void);
 
+int SpawnSnowman(float x, float y);
+
 #ifdef MAIN_IMPL
 #include <raymath.h>
 
@@ -153,12 +155,24 @@ enum GSType {
     GST_Snowman,
 };
 
+enum AI_Attack {
+    AIA_snowball,
+    AIA_snowball2,
+    AIA_bomb,
+};
+
 typedef struct Light {
   float radius;
   Color color;  
 } Light;
 
-
+typedef struct AI {
+    bool isAttacking;
+    float attackCooldown;
+//-
+    float desiredDistance;
+    int attackType;
+} AI;
 
 typedef struct GameSprite {
     bool enabled;
@@ -172,7 +186,10 @@ typedef struct GameSprite {
     Color c;
     bool hasLight;
     Light light;
+    float size;
     int health;
+    bool hasAI;
+    AI ai;
 } GameSprite;
 
 #define Prop_Tree (Rectangle){0,0,48,64}
@@ -198,12 +215,17 @@ bool once = false;
 
 void UpdateGame(void) {
     if (!once) {
-        int p = -128;
-        for (size_t i = 0; i < 64; i++)
+        
+        for (size_t i = 1; i < 128; i++)
         {
-            sprites[i] = (GameSprite){.type = GST_Prop, .x = GetRandomValue(-128,128), .y = GetRandomValue(-128,128), .c = WHITE, .enabled = true, .hasLight = false, .rect = Prop_Tree, .scale = {4,4}};// .light = {.radius = 1, .color = BLUE}};
-            p += 4;
+            sprites[i] = (GameSprite){.type = GST_Prop, .x = GetRandomValue(-128,128), .y = GetRandomValue(-128,128), .c = WHITE, .enabled = true, .hasLight = false, .rect = Prop_Tree, .scale = {GetRandomValue(3,4),4}, .size = 2};// .light = {.radius = 1, .color = BLUE}};
         }
+
+        for (size_t i = 0; i < 10; i++)
+        {
+            SpawnSnowman(GetRandomValue(-80, 80),GetRandomValue(-80, 80));
+        }
+        
         
         once = true;
     }
@@ -246,9 +268,34 @@ void UpdateGame(void) {
     playerVel =  Vector2Lerp( playerVel, (Vector2){playerInput.x * moveSpeed.x, playerInput.y * moveSpeed.y}, state.deltaTime * 15);
 
     playerPos = Vector2Add(Vector2Rotate((Vector2){playerVel.x * state.deltaTime, playerVel.y * state.deltaTime }, (-rotationY) * DEG2RAD),playerPos); 
+
+    playerPos = Vector2Clamp(playerPos, (Vector2){-100,-100}, (Vector2){100,100});
     
 }
 
+
+int SpawnSnowman(float x, float y) {
+    for (size_t i = 0; i < NUM_SPRITES; i++)
+    {
+        if (!sprites[i].enabled) {
+            
+            sprites[i] = (GameSprite){
+                .enabled = true,
+                .type = GST_Snowman, 
+                .x = x, 
+                .y = y, 
+                .c = RED, 
+                .hasLight = true,
+                .light = {.radius = 1.2, .color = RED},
+                .hasAI = true,
+                .ai = {.desiredDistance = 4, .attackType = AIA_snowball},
+            };
+            
+            return i;
+        }
+    }
+    return -1;
+}
 
 void DrawSnowman(Camera cam, int spriteIndex) {
     int i = spriteIndex;
@@ -257,7 +304,14 @@ void DrawSnowman(Camera cam, int spriteIndex) {
     Rectangle r1 = (Rectangle){48,0,64,48};
     Rectangle r2 = (Rectangle){0,0,48,48};
     
-    Rectangle fr0 = (Rectangle){0,0,48,48};
+    //Rectangle fr0 = (Rectangle){0,0,48,48};
+
+    Rectangle faces[4] = {
+        (Rectangle){0,0,48,48},
+        (Rectangle){48,0,48,48},
+        (Rectangle){48*2,0,1,1},
+        (Rectangle){48*3,0,48,48},
+    };
 
     float bob0 = 0.03 * sin(state.unpausedTime * 4);
     float bob1 = 0.02 * sin(state.unpausedTime * 3.8);
@@ -276,7 +330,7 @@ void DrawSnowman(Camera cam, int spriteIndex) {
 
     pos = Vector2MoveTowards(pos, playerPos, 0.1f);
     
-    DrawBillboardRec(cam, texSnowmanFaces, fr0, (Vector3){ pos.x, 1.6 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
+    DrawBillboardRec(cam, texSnowmanFaces, faces[ (int)state.unpausedTime % 4 ], (Vector3){ pos.x, 1.6 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
 
 
 }
@@ -296,9 +350,9 @@ void RenderLightingTexture(void) {
 
         DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*20,16*20}), 0, 20, GetColor(0x22223222));
 
-        float scale = 4.3;
+        float scale = 5.3;
         float colorscale = scale * 1.2;
-        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0x999999CC));
+        DrawTextureEx(texLight0, Vector2Subtract((Vector2){pl.x, pl.y} , (Vector2){16*scale,16*scale}), 0, scale, GetColor(0x99999944));
         
         for (size_t i = 0; i < NUM_SPRITES; i++)
         {
