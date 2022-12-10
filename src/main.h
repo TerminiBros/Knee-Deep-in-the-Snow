@@ -55,6 +55,7 @@ static Texture2D texSnowmanFaces;
 static Texture2D texSky;
 static Texture2D texLight0;
 static Texture2D texWeapons;
+static Texture2D texBullets;
 static Shader shdWarp;
 static Shader shdProp;
 static Shader shdPropEm;
@@ -133,10 +134,12 @@ static void UpdatePaused(void);
 static void ScaleWindowToContent(void);
 static void DrawDebugInfo(void);
 
+void SpawnPlayerBullet(int id, float x, float y, float h, Color c, Vector2 vel, int type);
 void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 scale);
 void SpawnSnowman(int id, float x, float y);
 void ClearAllSprites(void);
 void ClearSprite(int i);
+int FindFreeID(void);
 
 
 
@@ -163,6 +166,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
 
     texWeapons = LoadTexture("assets/textures/weapons.png");
     texProps = LoadTexture("assets/textures/props.png");
+    texBullets = LoadTexture("assets/textures/projectiles.png");
 
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     shdProp = LoadShader("assets/shaders/prop.vs", "assets/shaders/prop.fs");
@@ -222,6 +226,7 @@ typedef struct AI {
     float extraCooldown;
     int state;
     int nextstate;
+    float strafeSpeed;
     Vector2 velocity;
     bool stateCooldownEnabled;
 //-
@@ -238,6 +243,7 @@ typedef struct AI {
 typedef struct GameSprite {
     bool enabled;
     int type;
+    int bulletType;
     bool baseIsEmissive;
     int emissiveFrames;
     float emissiveFrameSpeed;
@@ -281,6 +287,7 @@ typedef struct Weapon {
     Vector2 offset;
     int ammoCap;
 // runtime
+    Color nextColor;
     float cooldown;
     float animTimer;
     float rotation;
@@ -309,6 +316,7 @@ static Weapon weapons[NUM_WEAPONS] = {
         .offset = {64,100+40},
         .pivot = {64,100},
         .spriteRect = { 288, 0, 128, 160 },
+        .nextColor = WHITE,
     },
     {   // BulbLauncher
         .bulletType = BTP_Bulb,
@@ -321,7 +329,8 @@ static Weapon weapons[NUM_WEAPONS] = {
         .holdDown = false,
         .offset = {0,0},
         .pivot = {0,0},
-        .spriteRect = { 0, 0, 96, 80 }
+        .spriteRect = { 0, 0, 96, 80 },
+        .nextColor = WHITE,
     },
 };
 
@@ -433,13 +442,21 @@ void UpdateGame(void) {
                     ai->state = AIS_Hunt;
                 }
 
+                if (!ai->stateCooldownEnabled) {
+                    ai->stateCooldown = GetRandomValue(30,50);
+                    ai->stateCooldownEnabled = true;
+                    ai->nextstate = AIS_Hunt;
+                }
+
                 break;
             }
 
             case AIS_Run: {
                 Vector2 diff = Vector2Subtract((Vector2){sprites[i].x,sprites[i].y}, playerPos);
+                Vector2 normdiff = Vector2Normalize(diff);
                 ai->velocity = Vector2Scale( Vector2Normalize(diff), ai->runSpeed );
-                sprites[i].angle = RAD2DEG * (180 + atan2f(ai->velocity.x, ai->velocity.y));
+                sprites[i].angle = RAD2DEG * (-atan2f(normdiff.y, normdiff.x)) + 180 + 90;
+                //sprites[i].angle = RAD2DEG * (180 + atan2f(ai->velocity.x, ai->velocity.y));
 
                 if (Vector2Distance((Vector2){sprites[i].x,sprites[i].y}, playerPos) > ai->escapeDistance) {
                     ai->state = AIS_Wander;
@@ -455,7 +472,7 @@ void UpdateGame(void) {
                 sprites[i].angle = RAD2DEG * (-atan2f(normdiff.y, normdiff.x)) + 180 + 90;
 
                 ai->velocity = Vector2Scale( Vector2Normalize(diff), ai->huntSpeed );
-                sprites[i].angle = (RAD2DEG * (atan2f(ai->velocity.x, ai->velocity.y)));
+                //sprites[i].angle = (RAD2DEG * (atan2f(ai->velocity.x, ai->velocity.y)));
                 
                 if (Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) < ai->desiredDistance) {
                     ai->state = AIS_Attack;
@@ -467,11 +484,15 @@ void UpdateGame(void) {
             case AIS_Attack: {
                 Vector2 diff = Vector2Subtract(playerPos, (Vector2){sprites[i].x,sprites[i].y});
                 Vector2 normdiff = Vector2Normalize(diff);
+                Vector2 rightDiff = Vector2Rotate(normdiff,90*DEG2RAD);
                 if (Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) > ai->desiredDistance + 2) {
                     ai->velocity = Vector2Scale( Vector2Normalize(diff), ai->huntSpeed + 1);
+                } else if (Vector2Distance(playerPos, (Vector2){sprites[i].x,sprites[i].y}) < ai->desiredDistance - 2) {
+                    ai->velocity = Vector2Scale( Vector2Normalize(diff), -ai->huntSpeed + 1);
                 } else {
                     ai->velocity = Vector2Lerp(ai->velocity, Vector2Zero(), state.deltaTime * 10);
                 }
+                ai->velocity = Vector2Add(ai->velocity, Vector2Scale(rightDiff,ai->strafeSpeed));
                 sprites[i].angle = RAD2DEG * (-atan2f(normdiff.y, normdiff.x)) + 180 + 90;
                 
                 break;
@@ -491,8 +512,14 @@ void UpdateGame(void) {
 
         }
 
-    }
 
+        if (sprites[i].type == GST_PlayerBullet || sprites[i].type == GST_EnemyBullet) {
+            sprites[i].x += sprites[i].ai.velocity.x * state.deltaTime;
+            sprites[i].y += sprites[i].ai.velocity.y * state.deltaTime;
+            sprites[i].hover -= state.deltaTime;
+        }
+
+    }
 
 
     /// $PLAYER CODE
@@ -513,6 +540,15 @@ void UpdateGame(void) {
             ) {
                 weapons[selectedWeapon].cooldown = weapons[selectedWeapon].cooldownMax;
                 weapons[selectedWeapon].animTimer = weapons[selectedWeapon].animTimerMax;
+
+
+                Vector2 vdir = Vector2Rotate((Vector2){0,1}, DEG2RAD * -rotationY);
+                Vector2 forward = Vector2Add( playerPos, vdir );
+
+                SpawnPlayerBullet(FindFreeID(), forward.x, forward.y, 1.0, weapons[selectedWeapon].nextColor, Vector2Scale(vdir,15), weapons[selectedWeapon].bulletType);
+                if (selectedWeapon == 1) {
+                    weapons[selectedWeapon].nextColor = BulbColorPool[GetRandomValue(0,5)];
+                }
             }
         }
 
@@ -571,6 +607,23 @@ int FindFreeID(void) {
     return -1;   
 }
 
+void SpawnPlayerBullet(int id, float x, float y, float h, Color c, Vector2 vel, int type) {
+    if (!sprites[id].enabled) {
+        sprites[id] = (GameSprite){
+            .enabled = true,
+            .type = GST_PlayerBullet, 
+            .x = x, 
+            .y = y, 
+            .c = c, 
+            .rect = (Rectangle){0,0,24,24}, 
+            .hover = h,
+            .size = 1,
+            .ai.velocity = vel,
+            .bulletType = type,
+        };
+    }
+}
+
 void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 scale) {
     if (!sprites[id].enabled) {
         sprites[id] = (GameSprite){
@@ -582,6 +635,7 @@ void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 
             .rect = prop, 
             .scale = scale,
             .health = -255,
+            .hover = 0,
             .baseIsEmissive = emissive,
             .emissiveFrames = emissive ? 1 : 0,
             .emissiveFrameSpeed = emissive ? 1 : 0,
@@ -592,7 +646,7 @@ void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 
 
 void SpawnSnowman(int id, float x, float y) {
     if (!sprites[id].enabled) {
-        
+
         sprites[id] = (GameSprite){
             .enabled = true,
             .type = GST_Snowman, 
@@ -609,10 +663,11 @@ void SpawnSnowman(int id, float x, float y) {
                 .wanderSpeed = 5,
                 .runSpeed = 6.8,
                 .huntSpeed = 5.5,
-                .desiredDistance = 5, 
+                .desiredDistance = 5 + ((float)GetRandomValue(0,15) / 1.0), 
                 .escapeDistance = 33, 
                 .engageDistance = 9, 
-                .attackType = AIA_snowball
+                .attackType = AIA_snowball,
+                .strafeSpeed = ((float)GetRandomValue(10, 40) / 10.0) * GetRandomValue(0,1) == 0 ? -1 : 1, 
             },
         };
         
@@ -798,6 +853,16 @@ void RenderScene(void) {
             DrawBillboardRec(cam, texProps, sprites[i].rect, (Vector3){ sprites[i].x, sprites[i].scale.y / 2, sprites[i].y }, sprites[i].scale, sprites[i].c);
             break;
         }
+
+        case GST_PlayerBullet: {
+            DrawBillboardRec(cam, texBullets, sprites[i].rect, (Vector3){ sprites[i].x, sprites[i].scale.y / 2 + sprites[i].hover, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
+            break;
+        }
+
+        case GST_EnemyBullet: {
+            DrawBillboardRec(cam, texBullets, sprites[i].rect, (Vector3){ sprites[i].x, sprites[i].scale.y / 2 + sprites[i].hover, sprites[i].y }, (Vector2){1,1}, sprites[i].c);
+            break;
+        }
         
         case GST_Snowman: {
             DrawSnowman(cam, i);
@@ -826,7 +891,7 @@ void RenderScene(void) {
         if (sprites[i].baseIsEmissive) {
             DrawBillboardRec(cam, texProps, 
                 (Rectangle) {sprites[i].rect.x, sprites[i].rect.y, sprites[i].rect.width, sprites[i].rect.height }, 
-                (Vector3){ pos.x, sprites[i].scale.y / 2, pos.y }, sprites[i].scale, sprites[i].c
+                (Vector3){ pos.x, sprites[i].scale.y / 2 + sprites[i].hover, pos.y }, sprites[i].scale, sprites[i].c
             );
         }
         
@@ -838,7 +903,7 @@ void RenderScene(void) {
             int frame = 1 + (int)(state.unpausedTime * sprites[i].emissiveFrameSpeed) % sprites[i].emissiveFrames;
             DrawBillboardRec(cam, texProps, 
                 (Rectangle) {sprites[i].rect.x, sprites[i].rect.y + (64 * frame) , sprites[i].rect.width, sprites[i].rect.height }, 
-                (Vector3){ pos.x, sprites[i].scale.y / 2, pos.y }, sprites[i].scale, WHITE
+                (Vector3){ pos.x, sprites[i].scale.y / 2 + sprites[i].hover, pos.y }, sprites[i].scale, WHITE
             );
         }
     }
@@ -881,7 +946,6 @@ void RenderMapOverlay(void) {
             DrawLine( ox + sprites[i].x, oy + sprites[i].y, ox + lookLine.x, oy + lookLine.y, ORANGE);
         //}
     }
-
 
 }
 
