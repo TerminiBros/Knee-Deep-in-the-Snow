@@ -194,6 +194,7 @@ enum AI_State {
     AIS_Hunt,
     AIS_Attack,
     AIS_Run,
+    AIS_Goto,
 };
 
 typedef struct Light {
@@ -204,7 +205,12 @@ typedef struct Light {
 typedef struct AI {
     bool isAttacking;
     float attackCooldown;
+    float stateCooldown;
+    float extraCooldown;
     int state;
+    int nextstate;
+    Vector2 velocity;
+
 //-
     float desiredDistance;
     int attackType;
@@ -307,10 +313,19 @@ void UpdateGame(void) {
 
         if (sprites[i].hasAI == true) {
 
+            AI* ai = &sprites[i].ai;
 
             switch (sprites[i].ai.state)
             {
+
             case AIS_Wander: {
+                if (ai->extraCooldown <= 0) {
+                    ai->extraCooldown = GetRandomValue(1,5);
+
+                    sprites[i].angle = GetRandomValue(0,360);
+                    ai->velocity = Vector2Scale( Vector2Rotate((Vector2){0,1}, sprites[i].angle * DEG2RAD), 7 );
+                }
+                ai->extraCooldown -= state.deltaTime;
 
                 break;
             }
@@ -328,14 +343,28 @@ void UpdateGame(void) {
             case AIS_Attack: {
 
                 break;
-            }   
-                
+            }
+
+            case AIS_Goto: {
+                if (ai->stateCooldown <= 0) {
+                    ai->state = ai->nextstate;
+                } else {
+                    ai->stateCooldown -= state.deltaTime;
+                }
+                break;
+            }
+
             default:
                 TraceLog(LOG_ERROR, "Sprite with ID [%d] has unknown AI state: [%d]. This sprite will be deleted.", i, sprites[i].ai.state);
                 sprites[i] = (GameSprite){0};
                 break;
             }
 
+            sprites[i].x += sprites[i].ai.velocity.x * state.deltaTime;
+            sprites[i].y += sprites[i].ai.velocity.y * state.deltaTime;
+            
+            sprites[i].x = Clamp(sprites[i].x, -100, 100);
+            sprites[i].y = Clamp(sprites[i].y, -100, 100);
 
         }
 
