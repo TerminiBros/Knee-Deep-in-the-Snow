@@ -56,11 +56,33 @@ static Texture2D texLight0;
 static Texture2D texWeapons;
 static Shader shdWarp;
 static Shader shdProp;
+static Shader shdPropEm;
 static Sound sfxPause;
 static Font fntLilLabels;
 #define LIL_LABELS_FONT_SIZE (7)
 
 int LightmapUniformLoc;
+
+
+
+// TODO: Baz set the color pool colors
+static Color BulbColorPool[5] = {
+    RED,
+    GREEN, 
+    YELLOW,
+    BLUE,
+    PINK
+};
+
+static Color BulbLightColorPool[5] = {
+    RED,
+    GREEN, 
+    YELLOW,
+    BLUE,
+    PINK
+};
+
+
 
 
 //-----Definitions-----//
@@ -143,6 +165,7 @@ void LoadAssets(void) { // Loads textures, shaders, audio, fonts, etc.
 
     shdWarp = LoadShader(0, TextFormat("assets/shaders/warp%d.fs", GLSL_VERSION));  // Load a shader based on GLSL version
     shdProp = LoadShader("assets/shaders/prop.vs", "assets/shaders/prop.fs");
+    shdPropEm = LoadShader(0, "assets/shaders/prop.fs");
     LightmapUniformLoc = GetShaderLocation(shdProp, "texLightmap");
 
     sfxPause = LoadSound("assets/audio/pause.ogg");                                 // Load a sound
@@ -190,7 +213,9 @@ typedef struct AI {
 typedef struct GameSprite {
     bool enabled;
     int type;
-    bool hasEmissive;
+    bool baseIsEmissive;
+    int emissiveFrames;
+    float emissiveFrameSpeed;
     float x, y;
     float angle;
     uint16_t animID;
@@ -206,8 +231,8 @@ typedef struct GameSprite {
     AI ai;
 } GameSprite;
 
-#define Prop_Tree (Rectangle){0,0,48,64}
-#define Prop_Bulb (Rectangle){48*2,0,48,64}
+#define Prop_Tree (Rectangle){0,0,64,64}
+#define Prop_Bulb (Rectangle){64,0,64,64}
 
 GameSprite sprites[NUM_SPRITES] = { 0
     //{.type = GST_Snowman, .x = 0, .y = 10, .c = RED, .enabled = true, .rect = {0,0,16,16}, .hasLight = true, .light = {.radius = 1.2, .color = RED}},
@@ -233,7 +258,11 @@ void UpdateGame(void) {
         
         for (size_t i = 0; i < 128; i++)
         {
-            SpawnProp(i, GetRandomValue(-128,128), GetRandomValue(-128,128), true, Prop_Tree, (Vector2){GetRandomValue(3,4),4} );
+            SpawnProp(i, GetRandomValue(-128,128), GetRandomValue(-128,128), false, Prop_Tree, (Vector2){GetRandomValue(3,4),4} );
+            if (GetRandomValue(0,5) == 0) {
+                sprites[i].emissiveFrames = 2;
+                sprites[i].emissiveFrameSpeed = 2;
+            }
         }
 
         for (size_t i = 0; i < 10; i++)
@@ -245,7 +274,9 @@ void UpdateGame(void) {
         {
             SpawnProp(127 + 10 + i, GetRandomValue(-128,128), GetRandomValue(-128,128), true, Prop_Bulb, (Vector2){3,3} );
             sprites[127 + 10 + i].hasLight = true;
-            sprites[127 + 10 + i].light = (Light){.color = GREEN, .radius = 1.2f};
+            int colorV = GetRandomValue(0,4);
+            sprites[127 + 10 + i].c = BulbColorPool[colorV],
+            sprites[127 + 10 + i].light = (Light){.color = BulbLightColorPool[colorV], .radius = 1.2f};
         }
         
         once = true;
@@ -363,7 +394,10 @@ void SpawnProp(int id, float x, float y, bool emissive, Rectangle prop, Vector2 
             .y = y, 
             .c = WHITE, 
             .rect = prop, 
-            .scale = scale, 
+            .scale = scale,
+            .baseIsEmissive = emissive,
+            .emissiveFrames = emissive ? 1 : 0,
+            .emissiveFrameSpeed = emissive ? 1 : 0,
             .size = 2
         };
     }
@@ -533,6 +567,7 @@ void RenderScene(void) {
         {
 
         case GST_Prop: {
+            if (sprites[i].baseIsEmissive) {break;}
             DrawBillboardRec(cam, texProps, sprites[i].rect, (Vector3){ sprites[i].x, sprites[i].scale.y / 2, sprites[i].y }, sprites[i].scale, sprites[i].c);
             break;
         }
@@ -549,6 +584,36 @@ void RenderScene(void) {
     }
 
     EndShaderMode();
+
+    // draw emissive 
+    BeginShaderMode(shdPropEm);
+
+    for (size_t i = 0; i < NUM_SPRITES; i++)
+    {
+        if (sprites[i].enabled == false) {continue;}
+        
+        if (sprites[i].type == GST_Prop && sprites[i].emissiveFrames > 0) {
+            Vector2 pos = (Vector2){sprites[i].x, sprites[i].y};
+
+            if (sprites[i].baseIsEmissive) {
+                DrawBillboardRec(cam, texProps, 
+                    (Rectangle) {sprites[i].rect.x, sprites[i].rect.y, sprites[i].rect.width, sprites[i].rect.height }, 
+                    (Vector3){ pos.x, sprites[i].scale.y / 2, pos.y }, sprites[i].scale, sprites[i].c
+                );
+            }
+
+            if (Vector2Distance(pos, playerPos) > 50) {continue;}
+
+            pos = Vector2MoveTowards(pos, playerPos, 0.025f);
+            int frame = 1 + (int)(state.unpausedTime * sprites[i].emissiveFrameSpeed) % sprites[i].emissiveFrames;
+            DrawBillboardRec(cam, texProps, 
+                (Rectangle) {sprites[i].rect.x, sprites[i].rect.y + (64 * frame) , sprites[i].rect.width, sprites[i].rect.height }, 
+                (Vector3){ pos.x, sprites[i].scale.y / 2, pos.y }, sprites[i].scale, WHITE
+            );
+        }
+    }
+
+    EndShaderMode();    
 
     EndMode3D();
 
