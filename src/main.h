@@ -397,7 +397,7 @@ void UpdateGame(void) {
                     ai->extraCooldown = GetRandomValue(1,5) + (ai->friendly ? 2.3f : 0);
 
                     sprites[i].angle = GetRandomValue(0,360);
-                    ai->velocity = Vector2Scale( Vector2Rotate((Vector2){0,1}, sprites[i].angle * DEG2RAD), 7 );
+                    ai->velocity = Vector2Scale( Vector2Rotate((Vector2){0,1}, sprites[i].angle * DEG2RAD), ai->wanderSpeed );
                 }
                 ai->extraCooldown -= state.deltaTime;
 
@@ -460,6 +460,8 @@ void UpdateGame(void) {
         }
 
     }
+
+    DebugDrawInt(10, 240, "WEAP", selectedWeapon);
 
 
     rotationY -= mouseDelta.x * mouseSensitivity.x * state.deltaTime;
@@ -533,13 +535,13 @@ void SpawnSnowman(int id, float x, float y) {
             .c = RED,
             .size = 1,
             .hasLight = true,
-            //.light = {.radius = 0.4, .color = RED},
+            // /.light = {.radius = 0.4, .color = LIGHTGRAY},
             .hasAI = true,
             .ai = {
                 .friendly =false,
-                .wanderSpeed = 7,
-                .runSpeed = 8,
-                .huntSpeed = 8,
+                .wanderSpeed = 5,
+                .runSpeed = 6.8,
+                .huntSpeed = 6.5,
                 .desiredDistance = 4, 
                 .escapeDistance = 20, 
                 .engageDistance = 9, 
