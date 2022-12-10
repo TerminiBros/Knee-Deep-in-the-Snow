@@ -373,7 +373,7 @@ void SetupEntireGame() {
 
     for (size_t i = 0; i < 128; i++)
     {
-        float r = 3 + (float)GetRandomValue(0, 10) / 1.0;
+        float r = 3 + (float)GetRandomValue(0, 10) / 10.0;
         SpawnProp(i, GetRandomValue(-128,128), GetRandomValue(-128,128), false, Prop_Tree, (Vector2){r,r} );
         if (GetRandomValue(0,5) == 0) {
             sprites[i].emissiveFrames = 2;
