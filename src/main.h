@@ -363,12 +363,12 @@ bool once = false;
 void SetupEntireGame() {
     ClearAllSprites();
 
-    Vector2 playerPos = {0,0};
-    Vector2 playerVel = {0,0};
-    float rotationY = 0;
-    float rotationX = 0;
-    float skyScroll = 0; 
-    int selectedWeapon = 0;
+    playerPos = (Vector2){0,0};
+    playerVel = (Vector2){0,0};
+    rotationY = 0;
+    rotationX = 0;
+    skyScroll = 0; 
+    selectedWeapon = 0;
 
 
     for (size_t i = 0; i < 128; i++)
@@ -383,7 +383,9 @@ void SetupEntireGame() {
 
     for (size_t i = 0; i < 10; i++)
     {
-        SpawnSnowman(127 + i, GetRandomValue(-80, 80),GetRandomValue(-80, 80));
+        float sx = GetRandomValue(20, 80) * (GetRandomValue(0,1) == 0 ? 1:-1);
+        float sy = GetRandomValue(20, 80) * (GetRandomValue(0,1) == 0 ? 1:-1);
+        SpawnSnowman(127 + i, sx, sy);
     }
     
     for (size_t i = 0; i < 15; i++)
@@ -411,10 +413,7 @@ void SetupEntireGame() {
 
 void UpdateGame(void) {
     if (!once) {
-        playerPos = Vector2Zero();
-        rotationX = 0;
         SetupEntireGame();
-        
         once = true;
     }
 
@@ -434,6 +433,10 @@ void UpdateGame(void) {
             mouseDelta = (Vector2) {0,0};
             EnableCursor();
         }
+    }
+
+    if (IsKeyPressed(KEY_R)) {
+        SetupEntireGame();
     }
 
 
@@ -1042,8 +1045,8 @@ void RenderMapOverlay(void) {
         if (!sprites[i].enabled) continue;
         DrawPixel(ox + sprites[i].x, oy + sprites[i].y, sprites[i].c);
         //if (sprites[i].hasAI) {
-            Vector2 lookLine = Vector2Add(Vector2Rotate((Vector2){0, 4}, (sprites[i].angle) * DEG2RAD), (Vector2){sprites[i].x, sprites[i].y});
-            DrawLine( ox + sprites[i].x, oy + sprites[i].y, ox + lookLine.x, oy + lookLine.y, ORANGE);
+            //Vector2 lookLine = Vector2Add(Vector2Rotate((Vector2){0, 4}, (sprites[i].angle) * DEG2RAD), (Vector2){sprites[i].x, sprites[i].y});
+            //DrawLine( ox + sprites[i].x, oy + sprites[i].y, ox + lookLine.x, oy + lookLine.y, ORANGE);
         //}
     }
 
