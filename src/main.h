@@ -599,7 +599,7 @@ void UpdateGame(void) {
                 Vector2 vdir = Vector2Rotate((Vector2){0,1}, DEG2RAD * -rotationY);
                 Vector2 forward = Vector2Add( playerPos, vdir );
 
-                SpawnPlayerBullet(FindFreeID(), forward.x, forward.y, 1.0, weapons[selectedWeapon].nextColor, Vector2Scale(vdir,weapons[selectedWeapon].bulletSpeed), weapons[selectedWeapon].bulletType);
+                SpawnPlayerBullet(FindFreeID(), forward.x, forward.y, Clamp(1.0 - (rotationX / 45.0), 0.0, 1.0), weapons[selectedWeapon].nextColor, Vector2Scale(vdir,weapons[selectedWeapon].bulletSpeed), weapons[selectedWeapon].bulletType);
                 if (selectedWeapon == 1) {
                     weapons[selectedWeapon].nextColor = BulbColorPool[GetRandomValue(0,5)];
                 }
