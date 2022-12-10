@@ -350,7 +350,7 @@ void UpdateGame(void) {
 
             case AIS_Wander: {
                 if (ai->extraCooldown <= 0) {
-                    ai->extraCooldown = GetRandomValue(1,5) + ai->friendly ? 2.3f : 0;
+                    ai->extraCooldown = GetRandomValue(1,5) + (ai->friendly ? 2.3f : 0);
 
                     sprites[i].angle = GetRandomValue(0,360);
                     ai->velocity = Vector2Scale( Vector2Rotate((Vector2){0,1}, sprites[i].angle * DEG2RAD), 7 );
@@ -490,7 +490,9 @@ void DrawSnowman(Camera cam, int spriteIndex) {
     int i = spriteIndex;
 
     Rectangle r0 = (Rectangle){0,48,64,48};
-    Rectangle r1 = (Rectangle){48,0,64,48};
+    Rectangle r0b = (Rectangle){0,48+48,64,48};
+    Rectangle r1 = (Rectangle){64,0,64,48};
+    Rectangle r1b = (Rectangle){64,48,64,48};
     Rectangle r2 = (Rectangle){0,0,48,48};
     
     //Rectangle fr0 = (Rectangle){0,0,48,48};
@@ -507,19 +509,28 @@ void DrawSnowman(Camera cam, int spriteIndex) {
     float bob2 = 0.01 * sin(state.unpausedTime * 3.5);
 
 
+    int faceToDraw = (int)state.unpausedTime % 4;
+
+
     DrawBillboardRec(cam, texSnowman, r0, (Vector3){ sprites[i].x, 0.5 + bob0, sprites[i].y }, (Vector2){1,1}, WHITE);
 
     Vector2 pos = Vector2MoveTowards((Vector2){sprites[i].x, sprites[i].y}, playerPos, 0.1f);
+
+    if (faceToDraw == 0)
+        DrawBillboardRec(cam, texSnowman, r0b, (Vector3){ pos.x, 0.5 + bob0, pos.y }, (Vector2){1,1}, WHITE);
 
     DrawBillboardRec(cam, texSnowman, r1, (Vector3){ pos.x, 1.1 + bob0 + bob1, pos.y }, (Vector2){1,1}, WHITE);
 
     pos = Vector2MoveTowards(pos, playerPos, 0.1f);
     
+    if (faceToDraw == 0)
+        DrawBillboardRec(cam, texSnowman, r1b, (Vector3){ pos.x, 1.1 + bob0 + bob1, pos.y }, (Vector2){1,1}, WHITE);
+    
     DrawBillboardRec(cam, texSnowman, r2, (Vector3){ pos.x, 1.6 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
 
     pos = Vector2MoveTowards(pos, playerPos, 0.1f);
     
-    DrawBillboardRec(cam, texSnowmanFaces, faces[ (int)state.unpausedTime % 4 ], (Vector3){ pos.x, 1.6 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
+    DrawBillboardRec(cam, texSnowmanFaces, faces[faceToDraw], (Vector3){ pos.x, 1.6 + bob0 + bob1 + bob2, pos.y }, (Vector2){1,1}, WHITE);
 
 
 }
